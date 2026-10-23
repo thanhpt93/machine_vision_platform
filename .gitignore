@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.idea/
+.vscode/
+*.log
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+.pytest_cache/
+*.egg-info/
