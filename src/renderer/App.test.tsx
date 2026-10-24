@@ -17,19 +17,32 @@ describe('App Component', () => {
         arch: 'x64',
       }),
       getRuntimeDefaultUrl: vi.fn().mockReturnValue('http://127.0.0.1:8000'),
+      savePipelineFile: vi.fn().mockResolvedValue({ success: true, filePath: 'test.json' }),
+      openPipelineFile: vi.fn().mockResolvedValue({ success: true, content: '{}' }),
     };
   });
 
-  it('renders application title and phase badge', async () => {
+  it('renders application title, phase badges and navigation tabs', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Connection refused'));
 
-    render(<App />);
+    render(<App initialTab="editor" />);
     expect(screen.getByText('Machine Vision Platform')).toBeInTheDocument();
+    expect(screen.getByText('Phase 2 Editor')).toBeInTheDocument();
     expect(screen.getByText('Phase 1 MVP')).toBeInTheDocument();
+    expect(screen.getByText('Pipeline Editor')).toBeInTheDocument();
     expect(screen.getByText('Python Vision Runtime')).toBeInTheDocument();
   });
 
-  it('displays healthy status when runtime is connected', async () => {
+  it('renders pipeline editor with node library and sample template', async () => {
+    render(<App initialTab="editor" />);
+    expect(screen.getByText('Node Library')).toBeInTheDocument();
+    expect(screen.getAllByText('Image File').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('ROI Crop').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Threshold').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Result Viewer').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('displays healthy status when runtime is connected in diagnostics view', async () => {
     const mockHealthResponse = {
       status: 'healthy',
       service: 'Vision Runtime',
@@ -45,7 +58,7 @@ describe('App Component', () => {
       json: async () => mockHealthResponse,
     });
 
-    render(<App />);
+    render(<App initialTab="diagnostics" />);
 
     await waitFor(() => {
       expect(screen.getByText('CONNECTED (200 OK)')).toBeInTheDocument();
@@ -54,10 +67,10 @@ describe('App Component', () => {
     });
   });
 
-  it('displays offline error alert when runtime is unreachable', async () => {
+  it('displays offline error alert when runtime is unreachable in diagnostics view', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Failed to connect to 127.0.0.1:8000'));
 
-    render(<App />);
+    render(<App initialTab="diagnostics" />);
 
     await waitFor(() => {
       expect(screen.getByText('OFFLINE')).toBeInTheDocument();

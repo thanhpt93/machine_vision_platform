@@ -11,20 +11,24 @@ Nền tảng kiểm tra bằng thị giác máy tính trong môi trường công
 │                 Electron Desktop App (Windows)             │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │             Renderer Process (Chromium)               │  │
-│  │   React 19 + TypeScript + Tailwind CSS + Zustand      │  │
-│  │   UI: Diagnostics & Health Dashboard / Node Canvas    │  │
+│  │   React 19 + TypeScript (Strict) + Tailwind CSS       │  │
+│  │   - UI Areas: Node Library, Pipeline Canvas,          │  │
+│  │     Properties Panel, Debug Panel                     │  │
+│  │   - State Engine: Zustand (Nodes, Edges, Validation)  │  │
+│  │   - Validation Engine: Pure TypeScript + Zod          │  │
 │  └──────────────────────────┬────────────────────────────┘  │
 │                             │ contextBridge (Safe API)      │
 │  ┌──────────────────────────▼────────────────────────────┐  │
 │  │                  Preload Script                       │  │
 │  │  - contextIsolation: true                             │  │
 │  │  - nodeIntegration: false                             │  │
-│  │  - Safe typed APIs (electronAPI)                      │  │
+│  │  - Safe typed APIs (savePipelineFile, openPipelineFile)│ │
 │  └──────────────────────────┬────────────────────────────┘  │
 │                             │ Main IPC                      │
 │  ┌──────────────────────────▼────────────────────────────┐  │
 │  │                  Main Process (Node.js)               │  │
 │  │  - Window lifecycle, security sandboxing              │  │
+│  │  - Controlled Native File Dialogs (*.json)            │  │
 │  └───────────────────────────────────────────────────────┘  │
 └─────────────────────────────┼───────────────────────────────┘
                               │ HTTP REST (127.0.0.1:8000)
@@ -34,161 +38,157 @@ Nền tảng kiểm tra bằng thị giác máy tính trong môi trường công
 │  - FastAPI REST API + Pydantic v2                           │
 │  - Health endpoint: /health                                 │
 │  - Tách biệt định nghĩa node (Contracts) với logic thực thi │
-│  - Pipeline JSON versioning & DAG Sequential Runner (Phase 2)│
-│  - OpenCV + ONNX Runtime (Phase 2 & 3)                      │
+│  - Pipeline JSON versioning & DAG Sequential Runner (Phase 3)│
+│  - OpenCV + ONNX Runtime (Giai đoạn sau)                    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Các nguyên tắc kiến trúc cốt lõi đã áp dụng:
-1. **Tách biệt ranh giới (Process Separation):** Giao diện Electron Desktop và Python Vision Runtime là hai tiến trình độc lập, không phụ thuộc cứng mã nguồn vào nhau.
-2. **Cô lập Renderer (Renderer Isolation):** Cấu hình `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, ngăn chặn renderer truy cập trực tiếp file system, shell hoặc phần cứng.
-3. **Giao tiếp qua API nội bộ (Local REST Boundary):** Desktop giao tiếp với Python Runtime qua `http://127.0.0.1:8000` với cơ chế xử lý lỗi mạng, timeout và auto-poll.
-4. **Hợp đồng Node (Node Contract) & Pipeline JSON Schema:** Định dạng JSON pipeline có trường phiên bản `schemaVersion: "1.0.0"`, định nghĩa kiểu dữ liệu chặt chẽ cho cổng vào/ra (port data types), cấu hình được xác thực qua Zod/Pydantic, không nhúng mã thực thi tùy ý vào JSON.
+---
+
+## 2. Giai đoạn 2: Trình soạn thảo Pipeline (Pipeline Editor)
+
+### 2.1. Bố cục 4 khu vực giao diện Desktop-First
+1. **Khu vực A — Node Library (Bên trái):**
+   - Phân loại node theo danh mục (`ACQUISITION`, `PREPROCESSING`, `OUTPUT`, ...).
+   - Ô tìm kiếm và lọc node tức thì theo tên, mô tả hoặc loại node.
+   - Hỗ trợ kéo node từ danh sách thả trực tiếp vào Canvas hoặc bấm nút `(+)` để thêm nhanh.
+   - 4 node mẫu:
+     - **Image File** (`ACQUISITION`): Cổng xuất `IMAGE`, cấu hình đường dẫn ảnh mẫu (`filePath`).
+     - **ROI Crop** (`PREPROCESSING`): Cổng vào `IMAGE`, cổng xuất `IMAGE`, cấu hình vùng cắt `x`, `y`, `width`, `height`.
+     - **Threshold** (`PREPROCESSING`): Cổng vào `IMAGE`, cổng xuất `IMAGE`, cấu hình ngưỡng `threshold` (0-255), chế độ `mode` (`BINARY`, `OTSU`, ...), giá trị cực đại `maxVal`.
+     - **Result Viewer** (`OUTPUT`): Cổng vào `IMAGE`, tùy chọn hiển thị `showHistogram`, `zoomLevel`, tiêu đề cửa sổ `title`.
+
+2. **Khu vực B — Pipeline Canvas (Trung tâm):**
+   - Xây dựng trên `@xyflow/react` với theme nền tảng tối (slate-950).
+   - Custom Node Component hiển thị biểu tượng theo danh mục, tên node, cổng vào (trái) và cổng ra (phải) có mã màu tương ứng kiểu dữ liệu (`IMAGE` màu cyan, `NUMBER` màu cam, ...).
+   - Đèn báo trạng thái trực quan ngay trên từng node (Xanh: Hợp lệ; Vàng: Cảnh báo cổng bắt buộc chưa nối; Đỏ: Lỗi cấu hình).
+   - Hỗ trợ thu phóng (Zoom), di chuyển (Pan), phím tắt `Delete`/`Backspace` để xóa node/edge.
+   - Tự động chặn kết nối không hợp lệ (lệch kiểu dữ liệu, tự nối vào chính mình, nhiều dây nối vào 1 cổng input, tạo chu trình lặp gây lỗi DAG).
+
+3. **Khu vực C — Properties Panel (Bên phải):**
+   - Hiển thị thông tin chi tiết và danh sách cổng vào/ra của node đang được chọn.
+   - Cho phép đổi tên hiển thị (Node Display Name) và các tham số cấu hình.
+   - Form cấu hình thay đổi linh hoạt theo loại node với xác thực schema Zod theo thời gian thực (hiển thị thông báo lỗi cụ thể khi nhập sai giá trị).
+   - Trạng thái hướng dẫn rõ ràng khi người dùng chưa chọn node nào.
+
+4. **Khu vực D — Debug Panel (Phía dưới):**
+   - Thanh công cụ có thể thu gọn / mở rộng.
+   - **Tab Validation:** Liệt kê chi tiết danh sách lỗi (Errors), cảnh báo (Warnings), thứ tự thực thi tuần tự (DAG Execution Flow), cảnh báo chu trình kèm danh sách ID node liên quan; khi bấm vào lỗi sẽ tự động chọn node tương ứng trên Canvas.
+   - **Tab Logs:** Ghi nhận lịch sử thao tác (thêm node, kết nối, xóa, lưu, tải).
+   - **Tab Pipeline JSON:** Hiển thị trực tiếp JSON có cấu trúc versioned theo thời gian thực kèm nút Copy vào bộ nhớ tạm.
+   - Hai huy hiệu trạng thái độc lập:
+     - `SAVEABLE` / `UNSAVEABLE`: Cho biết pipeline có thể lưu và tiếp tục chỉnh sửa sau này hay không.
+     - `EXECUTION READY` / `DRAFT PIPELINE`: Cho biết pipeline đã đáp ứng đầy đủ điều kiện đồ thị DAG, cấu hình hợp lệ và đủ kết nối để thực thi trong Python Runtime hay chưa.
 
 ---
 
-## 2. Cấu trúc thư mục (Folder Structure)
+## 3. Kiến trúc dữ liệu Pipeline JSON (Schema v1.0.0)
 
+Cấu trúc JSON lưu trữ và trao đổi dữ liệu tuân thủ schema `PipelineDefinitionSchema` từ `src/shared/contracts.ts`:
+
+```json
+{
+  "schemaVersion": "1.0.0",
+  "id": "pipeline_abc123",
+  "name": "Inspection Pipeline Sample",
+  "description": "Starter optical inspection template",
+  "createdAt": "2026-10-24T14:50:00.000Z",
+  "updatedAt": "2026-10-24T15:00:00.000Z",
+  "metadata": {},
+  "nodes": [
+    {
+      "id": "node_image_file_1",
+      "nodeType": "image_file",
+      "name": "Image File",
+      "position": { "x": 100, "y": 150 },
+      "config": { "filePath": "sample_images/pcb_board.png" }
+    },
+    {
+      "id": "node_threshold_1",
+      "nodeType": "threshold",
+      "name": "Threshold",
+      "position": { "x": 450, "y": 150 },
+      "config": { "threshold": 128, "mode": "BINARY", "maxVal": 255 }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_img_thresh",
+      "sourceNodeId": "node_image_file_1",
+      "sourcePortId": "image",
+      "targetNodeId": "node_threshold_1",
+      "targetPortId": "image_in"
+    }
+  ]
+}
 ```
-machine_vision_platform/
-├── package.json               # NPM scripts & frontend dependencies
-├── tsconfig.json              # TypeScript config cho React renderer & shared
-├── tsconfig.node.json         # TypeScript config cho Electron main process
-├── vite.config.ts             # Vite bundler configuration
-├── vitest.config.ts           # Vitest unit test configuration
-├── tailwind.config.js         # Tailwind CSS styling configuration
-├── postcss.config.js          # PostCSS configuration
-├── index.html                 # HTML entrypoint với CSP an toàn
-├── src/
-│   ├── main/                  # Electron Main Process
-│   │   ├── main.ts            # Quản lý vòng đời cửa sổ & sandbox
-│   │   └── preload.ts         # Preload an toàn phơi bày window.electronAPI
-│   ├── renderer/              # React Frontend Application
-│   │   ├── index.tsx          # React mount entrypoint
-│   │   ├── index.css          # Tailwind base & custom styles
-│   │   ├── App.tsx            # Main Application shell
-│   │   ├── App.test.tsx       # Vitest tests cho giao diện
-│   │   ├── setupTests.ts      # Vitest test setup & mocks
-│   │   ├── components/
-│   │   │   └── HealthDashboard.tsx # Màn hình kiểm tra & giám sát Python Runtime
-│   │   ├── services/
-│   │   │   └── runtimeApi.ts  # Client REST API gọi endpoint /health
-│   │   └── types/
-│   │       ├── api.ts         # Định nghĩa kiểu dữ liệu phản hồi API
-│   │       └── electron.d.ts  # Định nghĩa kiểu cho window.electronAPI
-│   └── shared/
-│       └── contracts.ts       # Hợp đồng node & Schema Pipeline JSON (Zod)
-├── python_runtime/            # Gói Python Vision Runtime độc lập
-│   ├── pyproject.toml         # Cấu hình gói Python chuẩn
-│   ├── requirements.txt       # Dependencies (fastapi, uvicorn, pydantic, pytest)
-│   ├── vision_runtime/
-│   │   ├── __init__.py
-│   │   ├── config.py          # Cấu hình runtime (host, port, version)
-│   │   ├── main.py            # Khởi tạo FastAPI app và CORS middleware
-│   │   ├── api/
-│   │   │   ├── __init__.py
-│   │   │   └── health.py      # Endpoint /health trả về trạng thái & uptime
-│   │   └── schemas/
-│   │       ├── __init__.py
-│   │       └── health.py      # Pydantic schema cho phản hồi health
-│   └── tests/
-│       ├── __init__.py
-│       └── test_health.py     # Pytest kiểm thử endpoint /health
-└── README.md                  # Hướng dẫn thiết lập, chạy và kiểm thử
-```
+
+### An toàn tập tin qua Electron IPC Bridge
+Quá trình lưu/mở file không cấp quyền truy cập Node `fs` trực tiếp cho Renderer mà thông qua các IPC handler được kiểm soát trong `src/main/main.ts` và preload bridge trong `src/main/preload.ts`:
+- `savePipelineFile(defaultName, content)` -> `dialog.showSaveDialog` với filter `*.json`
+- `openPipelineFile()` -> `dialog.showOpenDialog` với filter `*.json`
+- Có cơ chế fallback tự động sang tải file qua trình duyệt (Blob download & HTML file input) khi chạy trong môi trường kiểm thử Vitest hoặc Web dev.
 
 ---
 
-## 3. Yêu cầu môi trường (Prerequisites)
+## 4. Hướng dẫn chạy và sử dụng Pipeline Editor
 
-- **Hệ điều hành:** Windows 10/11 64-bit.
-- **Node.js:** Phiên bản `>= 20.0.0` (đã kiểm tra tương thích trên v24.22.1 với npm 11.19.1).
-- **Python:** Phiên bản `>= 3.10` (đã kiểm tra tương thích trên v3.14.7).
-
----
-
-## 4. Hướng dẫn thiết lập (Setup Instructions)
-
-### 4.1. Thiết lập Node.js & Frontend dependencies
-Mở terminal PowerShell tại thư mục gốc dự án:
+### 4.1. Khởi chạy ứng dụng
 ```powershell
-npm install
-```
-
-### 4.2. Thiết lập Python Runtime dependencies
-Cài đặt các gói phụ thuộc cần thiết cho Python:
-```powershell
-python -m pip install -r python_runtime/requirements.txt
-```
-
----
-
-## 5. Hướng dẫn chạy ứng dụng (Running the Application)
-
-### Bước 1: Khởi chạy Python Vision Runtime độc lập
-Khởi chạy dịch vụ FastAPI trên cổng `8000`:
-```powershell
-python -m uvicorn vision_runtime.main:app --app-dir python_runtime --host 127.0.0.1 --port 8000 --reload
-```
-- Khi chạy thành công, runtime sẽ lắng nghe tại: `http://127.0.0.1:8000`
-- Bạn có thể kiểm tra trực tiếp qua trình duyệt: `http://127.0.0.1:8000/health`
-- Tài liệu API tương tác Swagger UI: `http://127.0.0.1:8000/docs`
-
-### Bước 2: Khởi chạy ứng dụng Desktop Electron
-
-**Chế độ phát triển (Development Mode):**
-Mở thêm một terminal mới và chạy:
-```powershell
+# Chạy cả Vite dev server và Electron App
 npm run dev
-```
-Lệnh này sẽ tự động khởi động máy chủ Vite tại cổng 5173 và mở cửa sổ Electron kết nối với Vite.
 
-**Chế độ biên dịch đóng gói sẵn (Production Build & Start):**
-```powershell
-# Biên dịch cả Main process và React renderer
+# Hoặc biên dịch bản production và chạy
 npm run build
-
-# Khởi chạy Electron từ mã đã biên dịch trong thư mục dist/
 npm start
 ```
 
+### 4.2. Hướng dẫn thao tác trên giao diện
+1. **Thêm node:** Kéo một node từ thư viện bên trái vào Canvas, hoặc bấm nút `(+)` bên cạnh tên node.
+2. **Di chuyển node:** Nhấp và kéo node đến vị trí mong muốn trên Canvas.
+3. **Kết nối các cổng:** Kéo từ chấm tròn cổng ra (bên phải node nguồn) tới chấm tròn cổng vào (bên trái node đích). Hệ thống sẽ tự động kiểm tra tính tương thích và từ chối nếu không hợp lệ.
+4. **Cấu hình tham số:** Bấm chọn một node trên Canvas; giao diện bên phải sẽ hiển thị các trường cấu hình tương ứng. Nhập giá trị mới, hệ thống sẽ tự động xác thực và cập nhật.
+5. **Xóa node/kết nối:** Chọn node hoặc dây nối và nhấn phím `Delete` hoặc `Backspace`, hoặc nhấn biểu tượng thùng rác ở panel bên phải.
+6. **Lưu Pipeline:** Nhấn nút `Save` trên thanh công cụ để mở hộp thoại lưu file JSON chuẩn.
+7. **Mở Pipeline:** Nhấn nút `Open` hoặc `Import` để tải pipeline từ file JSON có sẵn. Hệ thống sẽ xác thực schema trước khi tải và giữ nguyên toàn bộ ID, vị trí, cấu hình và kết nối.
+8. **Chuyển đổi góc nhìn:** Sử dụng thanh điều hướng phía trên để chuyển đổi giữa `Pipeline Editor` và `Python Vision Runtime` (kiểm tra sức khỏe hệ thống từ giai đoạn Foundation).
+
 ---
 
-## 6. Hướng dẫn kiểm thử (Running Tests)
+## 5. Kiểm thử tự động (Testing)
 
-### 6.1. Kiểm tra kiểu dữ liệu TypeScript (Type Checking)
+### 5.1. Kiểm tra kiểu dữ liệu TypeScript (Strict Typecheck)
 ```powershell
 npm run typecheck
 ```
-*Kết quả:* Không có lỗi biên dịch TypeScript trong cả Renderer, Main process và Shared contracts.
+*Kết quả:* 0 errors.
 
-### 6.2. Kiểm thử Frontend (Vitest)
+### 5.2. Kiểm thử Frontend & Pipeline Test Suites (Vitest)
 ```powershell
 npm run test
 ```
-*Kết quả:* Chạy toàn bộ các test suite giao diện bằng `jsdom`, bao gồm kiểm tra render, kết nối thành công (200 OK) và hiển thị cảnh báo khi runtime mất kết nối.
-
-### 6.3. Kiểm thử Python Runtime (Pytest)
-```powershell
-python -m pytest python_runtime/tests -v
-```
-*Kết quả:* Kiểm thử endpoint root `/` và endpoint `/health` bảo đảm trả về mã HTTP 200, đúng cấu trúc schema Pydantic, uptime và thông tin môi trường.
+*Kết quả:* 4 test files / 23 tests passed:
+- `src/renderer/pipeline/__tests__/pipelineValidator.test.ts`: Kiểm thử quy tắc DAG, phát hiện chu trình, kiểm tra tương thích kiểu dữ liệu cổng, kiểm tra cổng bắt buộc, kiểm tra schema tham số node.
+- `src/renderer/pipeline/__tests__/pipelineStore.test.ts`: Kiểm thử thêm/xóa/sửa node, kết nối dây, lưu, xuất, nhập JSON, cờ dirty, bảo toàn vị trí và cấu hình khi tải lại.
+- `src/renderer/pipeline/__tests__/pipelineEditorUI.test.tsx`: Kiểm thử hiển thị danh mục thư viện node, tìm kiếm lọc, hiển thị form động theo node được chọn, điều hướng các tab Debug panel.
+- `src/renderer/App.test.tsx`: Kiểm thử tích hợp thanh điều hướng, chuyển đổi giữa Pipeline Editor và Diagnostics Health Dashboard của Foundation.
 
 ---
 
-## 7. Phạm vi Giai đoạn 1 & Giới hạn hiện tại
+## 6. Trạng thái nghiệm thu Giai đoạn 2
 
-| Tiêu chí | Trạng thái | Ghi chú |
+| Tiêu chí nghiệm thu | Trạng thái | Chi tiết |
 | :--- | :---: | :--- |
-| **Electron + React + TS Desktop App** | Hoàn thành | Đã khởi chạy, cô lập Renderer an toàn |
-| **Python Runtime độc lập** | Hoàn thành | Chạy bằng FastAPI + Uvicorn tại cổng 8000 |
-| **Health Check Endpoint (/health)** | Hoàn thành | Trả về JSON trạng thái, uptime, OS, python version |
-| **Giao diện Dashboard kiểm tra runtime** | Hoàn thành | Hiển thị latency, trạng thái kết nối, auto-poll 5s |
-| **Hợp đồng Node & Pipeline Schema** | Hoàn thành | Định nghĩa schema nền tảng tại `src/shared/contracts.ts` |
-| **TypeScript Typecheck** | Hoàn thành | 0 errors |
-| **Frontend Unit Tests (Vitest)** | Hoàn thành | 3/3 tests passed |
-| **Python Unit Tests (Pytest)** | Hoàn thành | 2/2 tests passed |
+| **Chạy được trong Electron** | Hoàn thành | Đã xác minh qua Electron smoke test (`TEST_EXIT=true`) |
+| **Kéo thả, di chuyển, chọn và xóa node** | Hoàn thành | Tích hợp hoàn chỉnh qua `@xyflow/react` và phím tắt Delete/Backspace |
+| **Kết nối và ngắt kết nối các node** | Hoàn thành | Hỗ trợ nối cổng tương thích kiểu dữ liệu, xóa kết nối linh hoạt |
+| **Ngăn chặn kết nối không hợp lệ** | Hoàn thành | Chặn lệch kiểu dữ liệu, tự nối vòng, trùng cổng input, tạo chu trình DAG |
+| **Properties Panel linh hoạt** | Hoàn thành | Tự thay đổi trường theo loại node, hiển thị lỗi Zod real-time |
+| **Lưu, xuất, nhập và tải lại Pipeline JSON** | Hoàn thành | Qua Electron Controlled File Dialogs; bảo toàn ID, tọa độ, cấu hình và kết nối |
+| **Phân biệt Saveable vs Execution Ready** | Hoàn thành | Hiển thị rõ hai trạng thái riêng biệt trên Debug Panel |
+| **Bảo toàn chức năng Health Check Foundation** | Hoàn thành | Tab `Python Vision Runtime` hiển thị đầy đủ dashboard và vượt qua các bài kiểm thử |
+| **Typecheck & Vitest** | Hoàn thành | 100% Passed (4/4 test files, 23/23 unit tests) |
 
 > [!NOTE]
-> **Giới hạn hiện tại (Current Limitations):**
-> Trong Giai đoạn 1 (Foundation MVP), canvas kéo-thả node chi tiết, thực thi đồ thị DAG, tải ảnh OpenCV và suy luận AI chưa được kích hoạt logic thực tế mà chỉ mới có schema hợp đồng nền tảng (`contracts.ts`). Các tính năng này sẽ được triển khai theo kế hoạch ở các giai đoạn tiếp theo.
+> **Phạm vi không thực hiện theo yêu cầu giai đoạn 2:**
+> Giai đoạn này không thực hiện gọi xử lý ảnh OpenCV thực tế, tích hợp camera phần cứng, chạy mô hình AI/ONNX hay tích hợp PLC. Toàn bộ kiến trúc dữ liệu và logic pipeline đã sẵn sàng để tích hợp vào engine thực thi của Python Runtime ở giai đoạn tiếp theo.

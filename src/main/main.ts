@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron';
 import path from 'path';
+import fs from 'fs/promises';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -7,8 +8,8 @@ const isDev = process.env.NODE_ENV === 'development';
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: 1440,
+    height: 900,
     minWidth: 1024,
     minHeight: 640,
     backgroundColor: '#020617', // slate-950
@@ -76,6 +77,52 @@ ipcMain.handle('app:get-info', () => {
     platform: process.platform,
     arch: process.arch,
   };
+});
+
+// Controlled File Dialog Handlers (no direct unrestricted fs access in Renderer)
+ipcMain.handle('pipeline:save-file', async (_event, { defaultName, content }: { defaultName: string; content: string }) => {
+  if (!mainWindow) return { success: false, error: 'No main window' };
+
+  try {
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: 'Save Pipeline JSON',
+      defaultPath: defaultName || 'vision_pipeline.json',
+      filters: [{ name: 'Pipeline JSON (*.json)', extensions: ['json'] }],
+    });
+
+    if (canceled || !filePath) {
+      return { success: false, canceled: true };
+    }
+
+    await fs.writeFile(filePath, content, 'utf-8');
+    return { success: true, filePath };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { success: false, error: message };
+  }
+});
+
+ipcMain.handle('pipeline:open-file', async () => {
+  if (!mainWindow) return { success: false, error: 'No main window' };
+
+  try {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: 'Open Pipeline JSON',
+      filters: [{ name: 'Pipeline JSON (*.json)', extensions: ['json'] }],
+      properties: ['openFile'],
+    });
+
+    if (canceled || filePaths.length === 0) {
+      return { success: false, canceled: true };
+    }
+
+    const filePath = filePaths[0];
+    const content = await fs.readFile(filePath, 'utf-8');
+    return { success: true, filePath, content };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { success: false, error: message };
+  }
 });
 
 app.whenReady().then(() => {
