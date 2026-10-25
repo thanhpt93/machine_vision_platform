@@ -10,13 +10,15 @@ import {
 } from '@xyflow/react';
 import {
   PipelineDefinition,
-  PipelineDefinitionSchema,
   PipelineEdge,
+  PipelineLifecycleStatus,
   PipelineNodeInstance,
+  migratePipelineDefinition,
 } from '@/shared/contracts';
 import { getNodeContract } from '../registry/nodeRegistry';
 import {
   validatePipeline,
+  validatePipelineForRelease,
   validateNewConnection,
   ValidationReport,
 } from '../validator/pipelineValidator';
@@ -55,7 +57,7 @@ export interface PipelineStoreState {
   edges: Edge[];
   selectedNodeId: string | null;
 
-  // Metadata
+  // Metadata & Lifecycle
   pipelineMeta: {
     id: string;
     name: string;
@@ -64,6 +66,7 @@ export interface PipelineStoreState {
     updatedAt: string;
     metadata?: Record<string, any>;
   };
+  lifecycleStatus: PipelineLifecycleStatus;
   isDirty: boolean;
   currentFilePath: string | null;
 
@@ -83,6 +86,7 @@ export interface PipelineStoreState {
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => { success: boolean; reason?: string };
+  onReconnect: (oldEdge: Edge, newConnection: Connection) => { success: boolean; reason?: string };
   selectNode: (nodeId: string | null) => void;
   addNode: (nodeType: string, position?: { x: number; y: number }) => string | null;
   updateNodeName: (nodeId: string, name: string) => void;
@@ -93,6 +97,9 @@ export interface PipelineStoreState {
   setActiveBottomTab: (tab: 'validation' | 'logs' | 'json') => void;
   addLog: (level: 'info' | 'warn' | 'error', message: string) => void;
   clearLogs: () => void;
+
+  // Phase 2 Lifecycle Actions
+  markPipelineValidated: () => { success: boolean; report: ValidationReport; error?: string };
 
   // Real Execution Engine Actions
   runPipeline: () => Promise<boolean>;
@@ -134,15 +141,16 @@ function extractPipelineInstances(nodes: Node[], edges: Edge[]): {
   return { nodeInstances, edgeInstances };
 }
 
-function createInitialPipeline() {
+export function createInitialPipeline() {
   const now = new Date().toISOString();
 
-  // 6-Node Starter Flow: Image -> ROI Crop -> Grayscale -> Threshold -> Contour -> Result Viewer
+  // Circle Metrology Starter Flow: Image (Bottle Cap) -> ROI Crop -> Grayscale -> Threshold -> Circle Measurement -> Draw Measurement (on Grayscale image) -> Result Viewer
   const imgNodeId = 'node_image_file_1';
   const cropNodeId = 'node_roi_crop_1';
   const grayNodeId = 'node_grayscale_1';
   const threshNodeId = 'node_threshold_1';
-  const contourNodeId = 'node_contour_1';
+  const circleMeasNodeId = 'node_circle_measurement_1';
+  const drawMeasNodeId = 'node_draw_measurement_1';
   const viewerNodeId = 'node_result_viewer_1';
 
   const starterNodes: Node[] = [
@@ -152,8 +160,8 @@ function createInitialPipeline() {
       position: { x: 50, y: 150 },
       data: {
         nodeType: 'image_file',
-        name: 'Image Source',
-        config: { filePath: 'sample_images/pcb_board.png' },
+        name: 'Bottle Cap Source',
+        config: { filePath: 'sample_images/bottle_cap.png' },
       },
     },
     {
@@ -163,7 +171,7 @@ function createInitialPipeline() {
       data: {
         nodeType: 'roi_crop',
         name: 'ROI Crop',
-        config: { x: 50, y: 50, width: 350, height: 250 },
+        config: { x: 10, y: 10, width: 340, height: 340 },
       },
     },
     {
@@ -182,28 +190,38 @@ function createInitialPipeline() {
       position: { x: 890, y: 150 },
       data: {
         nodeType: 'threshold',
-        name: 'Threshold',
-        config: { threshold: 128, mode: 'BINARY', maxVal: 255 },
+        name: 'Threshold Binarizer',
+        config: { threshold: 125, mode: 'BINARY', maxVal: 255 },
       },
     },
     {
-      id: contourNodeId,
+      id: circleMeasNodeId,
       type: 'customPipelineNode',
       position: { x: 1170, y: 150 },
       data: {
-        nodeType: 'contour_detection',
-        name: 'Contour Detection',
-        config: { mode: 'RETR_EXTERNAL', method: 'CHAIN_APPROX_SIMPLE', minArea: 50, maxArea: 500000, drawBoundingBoxes: true },
+        nodeType: 'circle_measurement',
+        name: 'Circle Measurement',
+        config: { circle_index: 0, scale: 1.0, unit: 'mm' },
+      },
+    },
+    {
+      id: drawMeasNodeId,
+      type: 'customPipelineNode',
+      position: { x: 1470, y: 150 },
+      data: {
+        nodeType: 'draw_measurement',
+        name: 'Draw Dimension',
+        config: { show_label: true },
       },
     },
     {
       id: viewerNodeId,
       type: 'customPipelineNode',
-      position: { x: 1470, y: 150 },
+      position: { x: 1770, y: 150 },
       data: {
         nodeType: 'result_viewer',
         name: 'Result Viewer',
-        config: { title: 'PCB Inspection Output', showOverlay: true, showHistogram: false, zoomLevel: 1.0 },
+        config: { title: 'Bottle Cap Circle Measurement', showOverlay: true, showHistogram: false, zoomLevel: 1.0 },
       },
     },
   ];
@@ -237,29 +255,38 @@ function createInitialPipeline() {
       animated: true,
     },
     {
-      id: 'edge_thresh_contour',
+      id: 'edge_thresh_circle',
       source: threshNodeId,
       sourceHandle: 'image_out',
-      target: contourNodeId,
+      target: circleMeasNodeId,
       targetHandle: 'mask_in',
       type: 'smoothstep',
       animated: true,
     },
     {
-      id: 'edge_contour_viewer_img',
-      source: contourNodeId,
+      id: 'edge_gray_draw',
+      source: grayNodeId,
       sourceHandle: 'image_out',
-      target: viewerNodeId,
+      target: drawMeasNodeId,
       targetHandle: 'image_in',
       type: 'smoothstep',
       animated: true,
     },
     {
-      id: 'edge_contour_viewer_det',
-      source: contourNodeId,
-      sourceHandle: 'detections',
+      id: 'edge_circle_draw',
+      source: circleMeasNodeId,
+      sourceHandle: 'measurement',
+      target: drawMeasNodeId,
+      targetHandle: 'measurement_in',
+      type: 'smoothstep',
+      animated: true,
+    },
+    {
+      id: 'edge_draw_viewer',
+      source: drawMeasNodeId,
+      sourceHandle: 'image_out',
       target: viewerNodeId,
-      targetHandle: 'detections_in',
+      targetHandle: 'image_in',
       type: 'smoothstep',
       animated: true,
     },
@@ -273,8 +300,8 @@ function createInitialPipeline() {
     edges: starterEdges,
     meta: {
       id: 'pipeline_' + Math.random().toString(36).substring(2, 9),
-      name: 'PCB Inspection Pipeline (OpenCV)',
-      description: 'End-to-end vision pipeline: Image -> Crop -> Grayscale -> Threshold -> Contour -> Viewer',
+      name: 'Bottle Cap Circle Metrology Pipeline (OpenCV)',
+      description: 'Automated circle dimensional measurement: Bottle Cap -> Crop -> Grayscale -> Threshold -> Circle Measurement -> Dimension Overlay (on Grayscale) -> Viewer',
       createdAt: now,
       updatedAt: now,
       metadata: {},
@@ -290,6 +317,7 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
   edges: initial.edges,
   selectedNodeId: null,
   pipelineMeta: initial.meta,
+  lifecycleStatus: 'Draft',
   isDirty: false,
   currentFilePath: null,
   validationReport: initial.validation,
@@ -298,7 +326,7 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
       id: generateId('log'),
       timestamp: new Date().toLocaleTimeString(),
       level: 'info',
-      message: 'Pipeline Editor initialized with 6-node OpenCV inspection template.',
+      message: 'Pipeline Editor initialized with 7-node OpenCV Circle Metrology template.',
     },
   ],
   activeBottomTab: 'validation',
@@ -315,8 +343,12 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
     const { nodeInstances, edgeInstances } = extractPipelineInstances(updatedNodes, get().edges);
     const report = validatePipeline(nodeInstances, edgeInstances);
 
+    // Non-selection node changes return lifecycleStatus to Draft
+    const hasStructuralOrPositionChange = changes.some((c) => c.type !== 'select');
+
     set({
       nodes: updatedNodes,
+      lifecycleStatus: hasStructuralOrPositionChange ? 'Draft' : get().lifecycleStatus,
       isDirty: true,
       validationReport: report,
     });
@@ -327,8 +359,11 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
     const { nodeInstances, edgeInstances } = extractPipelineInstances(get().nodes, updatedEdges);
     const report = validatePipeline(nodeInstances, edgeInstances);
 
+    const hasStructuralChange = changes.some((c) => c.type !== 'select');
+
     set({
       edges: updatedEdges,
+      lifecycleStatus: hasStructuralChange ? 'Draft' : get().lifecycleStatus,
       isDirty: true,
       validationReport: report,
     });
@@ -340,7 +375,15 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
       return { success: false, reason: 'Invalid handle coordinates.' };
     }
 
-    const { nodeInstances, edgeInstances } = extractPipelineInstances(nodes, edges);
+    // Auto-replace existing incoming connection on the same target port if dragging from a different source
+    const existingOnTargetPort = edges.find(
+      (e) => e.target === connection.target && e.targetHandle === connection.targetHandle
+    );
+    const edgesForValidation = existingOnTargetPort
+      ? edges.filter((e) => e.id !== existingOnTargetPort.id)
+      : edges;
+
+    const { nodeInstances, edgeInstances } = extractPipelineInstances(nodes, edgesForValidation);
     const check = validateNewConnection(
       connection.source,
       connection.sourceHandle,
@@ -365,7 +408,7 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
       animated: true,
     };
 
-    const newEdges = [...edges, newEdge];
+    const newEdges = [...edgesForValidation, newEdge];
     const { nodeInstances: updatedNodes, edgeInstances: updatedEdges } = extractPipelineInstances(
       nodes,
       newEdges
@@ -374,13 +417,81 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
 
     set({
       edges: newEdges,
+      lifecycleStatus: 'Draft',
+      isDirty: true,
+      validationReport: report,
+    });
+
+    if (existingOnTargetPort) {
+      get().addLog(
+        'info',
+        `Replaced connection on ${connection.target}:${connection.targetHandle} with ${connection.source}:${connection.sourceHandle}`
+      );
+    } else {
+      get().addLog(
+        'info',
+        `Connected ${connection.source}:${connection.sourceHandle} -> ${connection.target}:${connection.targetHandle}`
+      );
+    }
+
+    return { success: true };
+  },
+
+  onReconnect: (oldEdge: Edge, newConnection: Connection) => {
+    const { nodes, edges } = get();
+    if (!newConnection.source || !newConnection.target || !newConnection.sourceHandle || !newConnection.targetHandle) {
+      return { success: false, reason: 'Invalid handle coordinates.' };
+    }
+
+    // Remove the old edge being reconnected AND any existing edge occupying the target port
+    const remainingEdges = edges.filter(
+      (e) =>
+        e.id !== oldEdge.id &&
+        !(e.target === newConnection.target && e.targetHandle === newConnection.targetHandle)
+    );
+
+    const { nodeInstances, edgeInstances } = extractPipelineInstances(nodes, remainingEdges);
+    const check = validateNewConnection(
+      newConnection.source,
+      newConnection.sourceHandle,
+      newConnection.target,
+      newConnection.targetHandle,
+      nodeInstances,
+      edgeInstances
+    );
+
+    if (!check.allowed) {
+      get().addLog('warn', `Reconnection blocked: ${check.reason}`);
+      return { success: false, reason: check.reason };
+    }
+
+    const reconnectedEdge: Edge = {
+      id: `edge_${newConnection.source}_${newConnection.sourceHandle}_to_${newConnection.target}_${newConnection.targetHandle}`,
+      source: newConnection.source,
+      target: newConnection.target,
+      sourceHandle: newConnection.sourceHandle,
+      targetHandle: newConnection.targetHandle,
+      type: 'smoothstep',
+      animated: true,
+    };
+
+    const newEdges = [...remainingEdges, reconnectedEdge];
+    const { nodeInstances: updatedNodes, edgeInstances: updatedEdges } = extractPipelineInstances(
+      nodes,
+      newEdges
+    );
+    const report = validatePipeline(updatedNodes, updatedEdges);
+
+    set({
+      edges: newEdges,
+      lifecycleStatus: 'Draft',
       isDirty: true,
       validationReport: report,
     });
 
     get().addLog(
       'info',
-      `Connected ${connection.source}:${connection.sourceHandle} -> ${connection.target}:${connection.targetHandle}`
+      `Reconnected edge to ${newConnection.source}:${newConnection.sourceHandle} -> ${newConnection.target}:${newConnection.targetHandle}`
     );
 
     return { success: true };
@@ -421,6 +532,7 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
     set({
       nodes: updatedNodes,
       selectedNodeId: id,
+      lifecycleStatus: 'Draft',
       isDirty: true,
       validationReport: report,
     });
@@ -448,6 +560,7 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
 
     set({
       nodes: updatedNodes,
+      lifecycleStatus: 'Draft',
       isDirty: true,
       validationReport: report,
     });
@@ -476,6 +589,7 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
 
     set({
       nodes: updatedNodes,
+      lifecycleStatus: 'Draft',
       isDirty: true,
       validationReport: report,
     });
@@ -494,6 +608,7 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
       nodes: updatedNodes,
       edges: updatedEdges,
       selectedNodeId: get().selectedNodeId === nodeId ? null : get().selectedNodeId,
+      lifecycleStatus: 'Draft',
       isDirty: true,
       validationReport: report,
     });
@@ -508,6 +623,7 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
 
     set({
       edges: updatedEdges,
+      lifecycleStatus: 'Draft',
       isDirty: true,
       validationReport: report,
     });
@@ -522,8 +638,35 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
         ...meta,
         updatedAt: new Date().toISOString(),
       },
+      lifecycleStatus: 'Draft',
       isDirty: true,
     }));
+  },
+
+  markPipelineValidated: () => {
+    const { nodes, edges } = get();
+    const { nodeInstances, edgeInstances } = extractPipelineInstances(nodes, edges);
+    const releaseReport = validatePipelineForRelease(nodeInstances, edgeInstances);
+
+    if (!releaseReport.canRelease) {
+      const firstErr = releaseReport.errors[0]?.message || 'Pipeline failed release validation.';
+      get().addLog('error', `Cannot mark pipeline Validated: ${firstErr}`);
+      return {
+        success: false,
+        report: releaseReport,
+        error: firstErr,
+      };
+    }
+
+    set({
+      lifecycleStatus: 'Validated',
+      validationReport: validatePipeline(nodeInstances, edgeInstances),
+    });
+    get().addLog('info', 'Pipeline passed strict validation and is now marked Validated.');
+    return {
+      success: true,
+      report: releaseReport,
+    };
   },
 
   setActiveBottomTab: (tab: 'validation' | 'logs' | 'json') => {
@@ -700,6 +843,7 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
       edges: [],
       selectedNodeId: null,
       pipelineMeta: newMeta,
+      lifecycleStatus: 'Draft',
       isDirty: false,
       currentFilePath: null,
       executionSummary: null,
@@ -712,12 +856,10 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
   },
 
   loadPipeline: (pipelineJson: unknown, filePath?: string) => {
-    // 1. Validate structure through Zod PipelineDefinitionSchema
-    const parseResult = PipelineDefinitionSchema.safeParse(pipelineJson);
-    if (!parseResult.success) {
-      const errorMsg = parseResult.error.errors
-        .map((e) => `${e.path.join('.') || 'root'}: ${e.message}`)
-        .join('; ');
+    // 1. Validate and migrate structure through migratePipelineDefinition
+    const migrationResult = migratePipelineDefinition(pipelineJson);
+    if (!migrationResult.success || !migrationResult.pipeline) {
+      const errorMsg = migrationResult.error || 'Unknown schema error';
       get().addLog('error', `Failed to load pipeline: ${errorMsg}`);
       return {
         success: false,
@@ -725,7 +867,7 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
       };
     }
 
-    const data = parseResult.data;
+    const data = migrationResult.pipeline;
 
     // 2. Convert to React Flow nodes and edges (Preserving unsupported/unknown configs)
     const rfNodes: Node[] = data.nodes.map((node: PipelineNodeInstance) => {
@@ -769,6 +911,7 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
         updatedAt: data.updatedAt,
         metadata: data.metadata || {},
       },
+      lifecycleStatus: 'Draft',
       isDirty: false,
       executionSummary: null,
       nodeExecutionStates: {},
@@ -788,6 +931,11 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
     const { nodes, edges, pipelineMeta } = get();
     const { nodeInstances, edgeInstances } = extractPipelineInstances(nodes, edges);
 
+    // Ensure transient execution states never pollute exported .mvp files
+    const cleanMetadata = { ...(pipelineMeta.metadata || {}) };
+    delete cleanMetadata.__transientExecutionState;
+    delete cleanMetadata.__nodeExecutionStates;
+
     const definition: PipelineDefinition = {
       fileFormat: 'MVP_PIPELINE',
       schemaVersion: '1.0.0',
@@ -796,7 +944,7 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
       description: pipelineMeta.description || '',
       createdAt: pipelineMeta.createdAt,
       updatedAt: new Date().toISOString(),
-      metadata: pipelineMeta.metadata || {},
+      metadata: cleanMetadata,
       nodes: nodeInstances,
       edges: edgeInstances,
     };

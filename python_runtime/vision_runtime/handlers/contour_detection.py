@@ -124,5 +124,7 @@ def contour_detection_handler(
 
     return {
         "detections": structured_result,
+        "contours": structured_result,
+        "contours_out": filtered_contours,
         "image_out": annotated,
     }, metadata

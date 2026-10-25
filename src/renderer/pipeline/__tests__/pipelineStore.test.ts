@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { usePipelineStore } from '../store/pipelineStore';
+import { usePipelineStore, createInitialPipeline } from '../store/pipelineStore';
 
 describe('Pipeline Zustand Store', () => {
   beforeEach(() => {
@@ -60,6 +60,45 @@ describe('Pipeline Zustand Store', () => {
     expect(updated.edges).toHaveLength(1);
     expect(updated.edges[0].source).toBe(imgId);
     expect(updated.edges[0].target).toBe(threshId);
+  });
+
+  it('auto-replaces existing incoming connection when connecting a new source to an occupied target port', () => {
+    const store = usePipelineStore.getState();
+    const imgId = store.addNode('image_file')!;
+    const grayId = store.addNode('grayscale')!;
+    const drawId = store.addNode('draw_measurement')!;
+
+    store.onConnect({
+      source: imgId,
+      sourceHandle: 'image',
+      target: grayId,
+      targetHandle: 'image_in',
+    });
+
+    // First connect Image -> Draw Dimension (image_in)
+    const firstConn = store.onConnect({
+      source: imgId,
+      sourceHandle: 'image',
+      target: drawId,
+      targetHandle: 'image_in',
+    });
+    expect(firstConn.success).toBe(true);
+
+    // Now connect Grayscale -> Draw Dimension (image_in) to replace the existing edge
+    const replaceConn = store.onConnect({
+      source: grayId,
+      sourceHandle: 'image_out',
+      target: drawId,
+      targetHandle: 'image_in',
+    });
+    expect(replaceConn.success).toBe(true);
+
+    const drawIncomingEdges = usePipelineStore
+      .getState()
+      .edges.filter((e) => e.target === drawId && e.targetHandle === 'image_in');
+    expect(drawIncomingEdges).toHaveLength(1);
+    expect(drawIncomingEdges[0].source).toBe(grayId);
+    expect(drawIncomingEdges[0].sourceHandle).toBe('image_out');
   });
 
   it('deletes a node and cleans up connected edges', () => {
@@ -247,5 +286,30 @@ describe('Pipeline Zustand Store', () => {
       expect.any(String),
       undefined
     );
+  });
+
+  it('validates the default starter demo pipeline cleanly with 0 errors and canExecute=true', () => {
+    const initial = createInitialPipeline();
+    expect(initial.nodes).toHaveLength(7);
+    expect(initial.edges).toHaveLength(7);
+    expect(initial.validation.isValid).toBe(true);
+    expect(initial.validation.errors).toHaveLength(0);
+    expect(initial.validation.canExecute).toBe(true);
+    expect(initial.validation.topologicalOrder).toEqual([
+      'node_image_file_1',
+      'node_roi_crop_1',
+      'node_grayscale_1',
+      'node_threshold_1',
+      'node_circle_measurement_1',
+      'node_draw_measurement_1',
+      'node_result_viewer_1',
+    ]);
+
+    const grayToDrawEdge = initial.edges.find(
+      (e) => e.source === 'node_grayscale_1' && e.target === 'node_draw_measurement_1'
+    );
+    expect(grayToDrawEdge).toBeDefined();
+    expect(grayToDrawEdge?.sourceHandle).toBe('image_out');
+    expect(grayToDrawEdge?.targetHandle).toBe('image_in');
   });
 });

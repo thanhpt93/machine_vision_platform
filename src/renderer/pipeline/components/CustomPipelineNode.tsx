@@ -15,6 +15,19 @@ import {
 } from 'lucide-react';
 
 const categoryColorMap: Record<string, { bg: string; text: string; border: string }> = {
+  // 9 Canonical Categories
+  image_acquisition: { bg: 'bg-emerald-50 dark:bg-emerald-950/80', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-300 dark:border-emerald-700/60' },
+  image_preparation: { bg: 'bg-cyan-50 dark:bg-cyan-950/80', text: 'text-cyan-700 dark:text-cyan-400', border: 'border-cyan-300 dark:border-cyan-700/60' },
+  image_processing: { bg: 'bg-blue-50 dark:bg-blue-950/80', text: 'text-blue-700 dark:text-blue-400', border: 'border-blue-300 dark:border-blue-700/60' },
+  segmentation: { bg: 'bg-teal-50 dark:bg-teal-950/80', text: 'text-teal-700 dark:text-teal-400', border: 'border-teal-300 dark:border-teal-700/60' },
+  feature_extraction: { bg: 'bg-amber-50 dark:bg-amber-950/80', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-300 dark:border-amber-700/60' },
+  measurement_metrology: { bg: 'bg-lime-50 dark:bg-lime-950/80', text: 'text-lime-700 dark:text-lime-400', border: 'border-lime-300 dark:border-lime-700/60' },
+  decision_inspection_logic: { bg: 'bg-indigo-50 dark:bg-indigo-950/80', text: 'text-indigo-700 dark:text-indigo-400', border: 'border-indigo-300 dark:border-indigo-700/60' },
+  visualization: { bg: 'bg-pink-50 dark:bg-pink-950/80', text: 'text-pink-700 dark:text-pink-400', border: 'border-pink-300 dark:border-pink-700/60' },
+  data_logging: { bg: 'bg-violet-50 dark:bg-violet-950/80', text: 'text-violet-700 dark:text-violet-400', border: 'border-violet-300 dark:border-violet-700/60' },
+  ai_inference: { bg: 'bg-purple-50 dark:bg-purple-950/80', text: 'text-purple-700 dark:text-purple-400', border: 'border-purple-300 dark:border-purple-700/60' },
+
+  // Legacy aliases
   ACQUISITION: { bg: 'bg-emerald-50 dark:bg-emerald-950/80', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-300 dark:border-emerald-700/60' },
   PREPROCESSING: { bg: 'bg-cyan-50 dark:bg-cyan-950/80', text: 'text-cyan-700 dark:text-cyan-400', border: 'border-cyan-300 dark:border-cyan-700/60' },
   INSPECTION: { bg: 'bg-amber-50 dark:bg-amber-950/80', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-300 dark:border-amber-700/60' },
@@ -38,13 +51,18 @@ const dataTypeColorMap: Record<DataType, string> = {
   // Long-term standardized types
   ImageFrame: 'bg-cyan-500 border-cyan-300',
   MaskFrame: 'bg-teal-400 border-teal-200',
+  ContourSet: 'bg-emerald-500 border-emerald-300',
+  FeatureSet: 'bg-amber-500 border-amber-300',
   DetectionResult: 'bg-amber-500 border-amber-300',
   ClassificationResult: 'bg-purple-500 border-purple-300',
   OCRResult: 'bg-indigo-400 border-indigo-200',
   MeasurementResult: 'bg-lime-500 border-lime-300',
   InspectionResult: 'bg-rose-500 border-rose-300',
+  VisualizationResult: 'bg-pink-500 border-pink-300',
+  FileReference: 'bg-sky-500 border-sky-300',
   Scalar: 'bg-orange-500 border-orange-300',
   Boolean: 'bg-rose-500 border-rose-300',
+  String: 'bg-sky-500 border-sky-300',
 };
 
 export const CustomPipelineNode: React.FC<NodeProps> = memo(({ id, data, selected }) => {
@@ -61,8 +79,8 @@ export const CustomPipelineNode: React.FC<NodeProps> = memo(({ id, data, selecte
   const hasWarning = nodeWarnings.length > 0;
 
   const categoryStyle = contract
-    ? categoryColorMap[contract.category] || categoryColorMap.PREPROCESSING
-    : categoryColorMap.PREPROCESSING;
+    ? categoryColorMap[contract.category] || categoryColorMap.image_preparation
+    : categoryColorMap.image_preparation;
 
   const isRuntimeReady = contract?.runtime?.supported ?? true;
   const isFailed = nodeExecState?.status === 'failed';
@@ -118,8 +136,7 @@ export const CustomPipelineNode: React.FC<NodeProps> = memo(({ id, data, selecte
 
         {/* Runtime Execution & Validation Status Indicator */}
         <div className="shrink-0 flex items-center space-x-1">
-          {isRunning ? (
-            <span title="Running in OpenCV Python Runtime...">
+          {isRunning ? (            <span title="Running in OpenCV Python Runtime...">
               <Loader2 className="w-4 h-4 text-cyan-500 dark:text-cyan-400 animate-spin" />
             </span>
           ) : isCompleted ? (

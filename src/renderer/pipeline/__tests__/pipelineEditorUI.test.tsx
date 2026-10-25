@@ -18,9 +18,9 @@ describe('Pipeline Editor UI Panels', () => {
     it('renders node library with category groups and filters search', () => {
       render(<NodeLibrary />);
       expect(screen.getByText('Node Library')).toBeInTheDocument();
-      expect(screen.getByText('Acquisition')).toBeInTheDocument();
-      expect(screen.getByText('Preprocessing')).toBeInTheDocument();
-      expect(screen.getByText('Output View')).toBeInTheDocument();
+      expect(screen.getAllByText(/Acquisition/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Preparation|Preprocessing/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Visualization|Output View/i).length).toBeGreaterThan(0);
 
       const searchInput = screen.getByPlaceholderText(/search/i);
       act(() => {
@@ -48,6 +48,27 @@ describe('Pipeline Editor UI Panels', () => {
       expect(screen.getAllByText('Ready').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Pending').length).toBeGreaterThan(0);
       expect(screen.getByText('#ai')).toBeInTheDocument();
+    });
+
+    it('allows vertical category selection and toggles category list', () => {
+      render(<NodeLibrary />);
+
+      expect(screen.getByText('All Categories')).toBeInTheDocument();
+      const acqBtn = screen.getByRole('button', { name: /image acquisition/i });
+      expect(acqBtn).toBeInTheDocument();
+
+      act(() => {
+        fireEvent.click(acqBtn);
+      });
+
+      expect(screen.getByText('1 Filtered')).toBeInTheDocument();
+      expect(screen.getByText('Image File')).toBeInTheDocument();
+
+      const showAllBtn = screen.getByRole('button', { name: /show all/i });
+      act(() => {
+        fireEvent.click(showAllBtn);
+      });
+      expect(screen.queryByText('1 Filtered')).not.toBeInTheDocument();
     });
 
     it('allows creating a custom node dynamically through CreateNodeModal UI', () => {

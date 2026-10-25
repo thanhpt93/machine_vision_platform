@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from vision_runtime.engine.executor import pipeline_executor
 from vision_runtime.engine.buffer import execution_buffer
+from vision_runtime.engine.validator import validate_pipeline_definition
 from vision_runtime.registry import runtime_registry
 
 router = APIRouter(prefix="/api/pipeline", tags=["pipeline"])
@@ -20,6 +21,8 @@ class ExecutePipelineRequest(BaseModel):
 
 class ValidatePipelineRequest(BaseModel):
     pipeline: Dict[str, Any]
+    check_resources: bool = False
+    workspace_dir: Optional[str] = None
 
 
 @router.get("/supported-nodes", summary="List supported runtime nodes")
@@ -31,13 +34,28 @@ async def list_supported_nodes() -> Dict[str, Any]:
     }
 
 
-@router.post("/validate", summary="Validate pipeline DAG compilation")
+@router.post("/validate", summary="Validate pipeline DAG compilation and contracts")
 async def validate_pipeline(req: ValidatePipelineRequest) -> Dict[str, Any]:
     """
-    Validates DAG structure, node availability and produces execution plan.
+    Validates DAG structure, node availability, port compatibility, config safety,
+    and produces a topological execution plan.
+    Preserves backward-compatible fields (`valid`, `total_nodes`, `execution_plan`,
+    `unsupported_nodes`, `error`) while adding structured Phase 2 `errors` and `can_release`.
     """
     nodes = req.pipeline.get("nodes", [])
     edges = req.pipeline.get("edges", [])
+
+    # Ensure backward compatibility if minimal test payload omits id/schemaVersion
+    normalized_payload = dict(req.pipeline)
+    normalized_payload.setdefault("id", "temp_validation_pipeline")
+    normalized_payload.setdefault("name", "Validation Pipeline")
+    normalized_payload.setdefault("schemaVersion", "1.0.0")
+
+    val_result = validate_pipeline_definition(
+        raw_pipeline=normalized_payload,
+        check_resources=req.check_resources,
+        workspace_dir=req.workspace_dir,
+    )
 
     try:
         plan = pipeline_executor.compile_execution_plan(nodes, edges)
@@ -45,23 +63,30 @@ async def validate_pipeline(req: ValidatePipelineRequest) -> Dict[str, Any]:
             {"order": i + 1, "id": n["id"], "type": n.get("nodeType", ""), "name": n.get("name", "")}
             for i, n in enumerate(plan)
         ]
-        unsupported = [
-            n["id"] for n in nodes if not runtime_registry.is_supported(n.get("nodeType", ""))
-        ]
-
-        return {
-            "valid": len(unsupported) == 0,
-            "total_nodes": len(nodes),
-            "execution_plan": plan_summary,
-            "unsupported_nodes": unsupported,
-        }
     except Exception as e:
         return {
             "valid": False,
+            "can_release": False,
             "error": str(e),
+            "errors": [err.model_dump(mode="json") for err in val_result.errors],
+            "warnings": [w.model_dump(mode="json") for w in val_result.warnings],
             "execution_plan": [],
-            "unsupported_nodes": [],
+            "unsupported_nodes": val_result.unsupported_nodes,
         }
+
+    first_error = val_result.errors[0].message if val_result.errors else None
+    response: Dict[str, Any] = {
+        "valid": val_result.valid,
+        "can_release": val_result.can_release,
+        "total_nodes": len(nodes),
+        "execution_plan": plan_summary if val_result.valid else val_result.execution_plan,
+        "unsupported_nodes": val_result.unsupported_nodes,
+        "errors": [err.model_dump(mode="json") for err in val_result.errors],
+        "warnings": [w.model_dump(mode="json") for w in val_result.warnings],
+    }
+    if first_error:
+        response["error"] = first_error
+    return response
 
 
 @router.post("/execute", summary="Execute vision pipeline sequentially")

@@ -33,6 +33,7 @@ const PipelineCanvasInner: React.FC = () => {
   const onNodesChange = usePipelineStore((state) => state.onNodesChange);
   const onEdgesChange = usePipelineStore((state) => state.onEdgesChange);
   const onConnect = usePipelineStore((state) => state.onConnect);
+  const onReconnect = usePipelineStore((state) => state.onReconnect);
   const selectNode = usePipelineStore((state) => state.selectNode);
   const addNode = usePipelineStore((state) => state.addNode);
   const deleteNode = usePipelineStore((state) => state.deleteNode);
@@ -52,13 +53,23 @@ const PipelineCanvasInner: React.FC = () => {
         config: (n.data as any).config || {},
       }));
 
-      const edgeInstances: PipelineEdge[] = edges.map((e) => ({
-        id: e.id,
-        sourceNodeId: e.source,
-        sourcePortId: e.sourceHandle || '',
-        targetNodeId: e.target,
-        targetPortId: e.targetHandle || '',
-      }));
+      // Allow dragging a new wire into an already-occupied target port (auto-replace)
+      const edgeInstances: PipelineEdge[] = edges
+        .filter(
+          (e) =>
+            !(
+              e.target === connection.target &&
+              e.targetHandle === connection.targetHandle &&
+              (e.source !== connection.source || e.sourceHandle !== connection.sourceHandle)
+            )
+        )
+        .map((e) => ({
+          id: e.id,
+          sourceNodeId: e.source,
+          sourcePortId: e.sourceHandle || '',
+          targetNodeId: e.target,
+          targetPortId: e.targetHandle || '',
+        }));
 
       const check = validateNewConnection(
         connection.source,
@@ -103,6 +114,13 @@ const PipelineCanvasInner: React.FC = () => {
     [selectNode]
   );
 
+  const handleEdgeDoubleClick = useCallback(
+    (_: React.MouseEvent, edge: Edge) => {
+      deleteEdge(edge.id);
+    },
+    [deleteEdge]
+  );
+
   const handlePaneClick = useCallback(() => {
     selectNode(null);
   }, [selectNode]);
@@ -139,7 +157,10 @@ const PipelineCanvasInner: React.FC = () => {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onReconnect={onReconnect}
+        edgesReconnectable
         onNodeClick={handleNodeClick}
+        onEdgeDoubleClick={handleEdgeDoubleClick}
         onPaneClick={handlePaneClick}
         isValidConnection={isValidConnection}
         fitView

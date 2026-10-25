@@ -1,247 +1,252 @@
-# Nền tảng Machine Vision trên Windows (Industrial Vision Platform)
+# Nền tảng Machine Vision trên Windows (NOVA Industrial Vision Platform)
 
-Nền tảng kiểm tra bằng thị giác máy tính trong môi trường công nghiệp dành cho hệ điều hành Windows. Ứng dụng cung cấp môi trường kéo thả node trực quan (dựa trên React Flow / `@xyflow/react`), quản lý luồng dữ liệu pipeline dưới định dạng file `.mvp` có phiên bản, và tích hợp thực thi pipeline xử lý ảnh thực tế từ đầu đến cuối bằng **OpenCV** trong **Python Vision Runtime (FastAPI)**.
+Nền tảng kiểm tra bằng thị giác máy tính trong môi trường công nghiệp dành cho hệ điều hành Windows. Ứng dụng cung cấp hai chế độ vận hành riêng biệt và hai bộ cài đặt Windows (NSIS Installer) độc lập từ chung một codebase:
+1. **Developer Edition (`NOVA Machine Vision Platform — Developer Edition`):** Môi trường kéo thả node trực quan (React Flow), cấu hình tham số, kiểm thử và phát hành phiên bản pipeline bất biến (`Release for Production`) dưới định dạng `.mvp`, đồng thời hỗ trợ chuyển đổi sang giao diện Production Mode để kiểm thử.
+2. **Production Edition (`NOVA Machine Vision Platform — Production Edition`):** Ứng dụng trạm kiểm tra công nghiệp chuyên dụng mở trực tiếp vào **Production Mode UI** khi khởi động, ẩn và khóa toàn bộ tính năng chỉnh sửa pipeline / Developer Mode / DevTools, tự động khởi chạy và quản lý tiến trình **Python Vision Runtime (FastAPI + OpenCV)**, và lưu trữ dữ liệu phát hành / lịch sử kiểm tra trong thư mục dữ liệu người dùng Windows (`%APPDATA%`).
 
 ---
 
 ## 1. Kiến trúc hệ thống (Architecture)
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                 Electron Desktop App (Windows)             │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │             Renderer Process (Chromium)               │  │
-│  │   React 19 + TypeScript (Strict) + Tailwind CSS       │  │
-│  │   - UI Areas: Node Library, Pipeline Canvas,          │  │
-│  │     Properties Panel (Dynamic Form + Preview), Debug  │  │
-│  │   - "Run Pipeline" Execution Controller [F5]          │  │
-│  │   - Dynamic Node Creator UI (CreateNodeModal)         │  │
-│  │   - Extensible Node Registry (Tags, Icons, Descriptors│  │
-│  │   - Live Node Status Badges (Idle, Running, Done, Err)│  │
-│  │   - Theme Manager: Dark / Light Mode (Persistent)     │  │
-│  │   - State Engine: Zustand (Nodes, Edges, MVP File)    │  │
-│  │   - Validation Engine: Pure TypeScript + Zod          │  │
-│  └──────────────────────────┬────────────────────────────┘  │
-│                             │ contextBridge (Safe API)      │
-│  ┌──────────────────────────▼────────────────────────────┐  │
-│  │                  Preload Script                       │  │
-│  │  - contextIsolation: true                             │  │
-│  │  - nodeIntegration: false                             │  │
-│  │  - Controlled IPC: save/open .mvp, selectImageFile    │  │
-│  └──────────────────────────┬────────────────────────────┘  │
-│                             │ Main IPC                      │
-│  ┌──────────────────────────▼────────────────────────────┐  │
-│  │                  Main Process (Node.js)               │  │
-│  │  - Window lifecycle, security sandboxing              │  │
-│  │  - Native Application Menu (File: New, Open, Save...) │  │
-│  │  - Controlled Native File Dialogs (*.mvp, Images)     │  │
-│  └───────────────────────────────────────────────────────┘  │
-└─────────────────────────────┼───────────────────────────────┘
-                              │ HTTP REST (127.0.0.1:8000)
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│             Python Vision Runtime (FastAPI)                 │
-│  - Pipeline DAG Compilation (Topological Sort / Kahn)       │
-│  - Cycle Detection & Error Isolation (Skipped Nodes)        │
-│  - Real OpenCV Handlers:                                    │
-│    * image_loader (cv2.imread, PNG/JPG/BMP validation)      │
-│    * roi_crop (cv2 sub-region slicing with boundary clamp)  │
-│    * grayscale (cv2.cvtColor, optional equalizeHist)        │
-│    * threshold (cv2.threshold: Binary, Otsu, Trunc, etc.)   │
-│    * contour_detection (cv2.findContours, area filter, bbox)│
-│    * result_viewer (sink visual frames & inspection report) │
-│    * gaussian_blur (cv2.GaussianBlur convolution)           │
-│  - Bounded Execution Buffer & TTL Cleanup                   │
-│  - Live JPEG Preview Endpoint (/preview)                    │
-│  - Monotonic Clock Profiling (time.perf_counter)            │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                 Electron Desktop App (Windows Workstation)              │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │                 Renderer Process (React 19 + TS)                  │  │
+│  │  ┌─────────────────────────────┐ ┌─────────────────────────────┐  │  │
+│  │  │       Developer Mode        │ │       Production Mode       │  │  │
+│  │  │ - React Flow DAG Editor     │ │ - Production Dashboard      │  │  │
+│  │  │ - 9 Industrial Categories   │ │ - Inspection Workstation    │  │  │
+│  │  │ - Node Properties & Debug   │ │ - Inspection History        │  │  │
+│  │  │ - Validate & Release (.mvp) │ │ - Pipeline Management (R/O) │  │  │
+│  │  │                             │ │ - System Status & Settings  │  │  │
+│  │  └──────────────┬──────────────┘ └──────────────┬──────────────┘  │  │
+│  └─────────────────┼───────────────────────────────┼─────────────────┘  │
+│                    │ contextBridge (Safe IPC)      │                    │
+│  ┌─────────────────▼───────────────────────────────▼─────────────────┐  │
+│  │               Preload & Main Process (Sandboxed)                  │  │
+│  │  - Edition Isolation (Developer vs Production IPC & Menu Guards)  │  │
+│  │  - Managed RuntimeProcessManager (Auto-Start/Health/Clean Exit)   │  │
+│  └─────────────────────────────────┬─────────────────────────────────┘  │
+└────────────────────────────────────┼────────────────────────────────────┘
+                                     │ HTTP REST (127.0.0.1:8000)
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    Python Vision Runtime (FastAPI)                      │
+│  - Pipeline DAG Validator & Topological Executor                        │
+│  - Immutable Release Manager (SHA-256 Checksum & Atomic Persistence)    │
+│  - Production Inspection Service (Strict Separation of Execution Status │
+│    QUEUED/RUNNING/COMPLETED/FAILED/CANCELLED vs Outcome OK/NG/UNKNOWN)  │
+│  - 81 Real OpenCV / NumPy Handlers across 9 Industrial Categories       │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Giai đoạn 3: Pipeline xử lý ảnh thực tế bằng OpenCV
+## 2. 9 Danh mục Node Chuẩn Công nghiệp (9 Standard Industrial Categories)
 
-### 2.1. Quy trình xử lý ảnh 6 Node mẫu (End-to-End Vision Pipeline)
-Khi khởi động ứng dụng, template kiểm tra mạch in công nghiệp (PCB Board Inspection) được nạp sẵn gồm chuỗi 6 node:
-1. **Image File Source (`image_file`):** 
-   - Đọc ảnh công nghiệp từ đường dẫn cục bộ (PNG, JPEG, BMP).
-   - Kiểm tra file tồn tại, không rỗng và giải mã ảnh hợp lệ bằng `cv2.imread`.
-   - Cung cấp nút **\"Browse...\"** kích hoạt hộp thoại chọn file gốc thông qua Electron IPC an toàn, không cấp quyền truy cập filesystem trực tiếp cho Renderer.
-2. **ROI Crop (`roi_crop`):**
-   - Cắt vùng quan tâm xác định bởi `[x, y, width, height]`.
-   - Tự động kiểm tra biên ảnh và kẹp tọa độ (clamping) để tránh lỗi tràn bộ nhớ (out of bounds).
-3. **Grayscale (`grayscale`):**
-   - Chuyển đổi không gian màu từ BGR/BGRA sang ảnh xám 1 kênh (`cv2.COLOR_BGR2GRAY`).
-   - Tùy chọn cân bằng biểu đồ sắc độ (`equalizeHist: true`).
-4. **Threshold (`threshold`):**
-   - Phân ngưỡng nhị phân với các chế độ: `BINARY`, `BINARY_INV`, `TRUNC`, `TOZERO`, `TOZERO_INV`, `OTSU`.
-   - Trả về `MaskFrame` và tính toán tỷ lệ điểm sáng (coverage percent).
-5. **Contour Detection (`contour_detection`):**
-   - Trích xuất đường bao biên dạng chi tiết với `cv2.findContours`.
-   - Lọc nhiễu theo diện tích tối thiểu và tối đa (`minArea`, `maxArea`).
-   - Trả về kết quả cấu trúc `DetectionResult` (số lượng đối tượng, tọa độ bounding box, tâm centroid, diện tích).
-   - Tự động sinh ảnh vẽ viền trực quan (annotated preview) với màu sắc nổi bật và nhãn số thứ tự từng lỗi/vật thể.
-6. **Result Viewer (`result_viewer`):**
-   - Đóng vai trò là điểm kết thúc (Sink node) cho luồng hình ảnh và kết quả cấu trúc.
-   - Tổng hợp báo cáo kết quả kiểm tra (tổng số lỗi, độ bao phủ, trạng thái đạt/không đạt).
+Hệ thống triển khai đầy đủ 9 nhóm chức năng xử lý ảnh truyền thống bằng OpenCV/NumPy (không sử dụng neural network/ONNX trong giai đoạn này, đảm bảo kiến trúc mở rộng sẵn sàng cho AI ở các giai đoạn sau):
 
-### 2.2. Bộ thực thi Pipeline trên Python Runtime (Topological Executor)
-- **Biên dịch đồ thị DAG:** Sử dụng thuật toán sắp xếp tô-pô Kahn's Algorithm để xác định thứ tự thực thi chính xác từ các kết nối (Edges).
-- **Phát hiện vòng lặp (Cycle Detection):** Từ chối thực thi đồ thị có chu trình khép kín và trả về mã lỗi rõ ràng.
-- **Cô lập lỗi (Error Isolation):** Nếu một node gặp lỗi (ví dụ file ảnh không tồn tại hoặc tọa độ ROI không hợp lệ), node đó được đánh dấu `failed`, toàn bộ node phía sau phụ thuộc dữ liệu của nó được đánh dấu `skipped`, không làm sập server Python hay ứng dụng desktop.
-- **Đo lường thời gian chính xác:** Sử dụng đồng hồ đơn điệu `time.perf_counter()` để đo thời gian xử lý thực tế từng mili-giây (ms) của từng node.
+### 1. Image Acquisition (`image_acquisition`)
+- `image_file`: Nạp ảnh tĩnh từ đĩa (PNG, JPEG, BMP).
+- `image_folder`: Nạp hàng loạt ảnh theo thư mục.
+- `image_sequence`: Duyệt và stream chuỗi ảnh theo pattern số thứ tự.
+- `image_copy`: Nhân bản bộ đệm ảnh độc lập (deep copy).
 
-### 2.3. Quản lý bộ nhớ đệm (Execution Buffer & Cleanup)
-- Dữ liệu ảnh thô (`numpy.ndarray`) không gửi trực tiếp qua JSON để tránh làm nghẽn IPC/HTTP.
-- Dữ liệu được lưu trong `ExecutionBuffer` nội tại của Python, tự động nén JPEG kích thước vừa phải (thumbnail preview) khi client yêu cầu.
-- Tự động dọn dẹp các phiên thực thi cũ sau khoảng thời gian sống (TTL = 15 phút) hoặc giải phóng tức thì khi gọi `DELETE /api/pipeline/executions/{id}`.
+### 2. Image Preparation (`image_preparation`)
+- `roi_crop`: Cắt vùng quan tâm xác định bởi tọa độ `[x, y, width, height]`.
+- `resize`: Thay đổi kích thước ảnh theo kích thước tuyệt đối hoặc tỷ lệ.
+- `color_convert`: Chuyển đổi không gian màu (BGR2GRAY, BGR2HSV, BGR2RGB, BGR2LAB).
+- `normalize`: Chuẩn hóa dải độ sáng theo Min-Max scaling.
+- `blur_denoise`: Khử nhiễu với Gaussian Blur, Median Filter hoặc Bilateral Filter.
+- `brightness_contrast`: Hiệu chỉnh độ tương phản (Alpha) và độ sáng (Beta).
+- `histogram_equalize`: Cân bằng biểu đồ sắc độ toàn cục hoặc cục bộ (CLAHE).
+- `sharpen`: Tăng cường độ nét biên dạng bằng unsharp mask.
+- `invert`: Đảo ngược giá trị điểm ảnh (255 - pixel).
+- `image_arithmetic`: Cộng, trừ hoặc hòa trộn (blend) 2 khung hình.
+- `flip_rotate`: Lật gương (ngang, dọc) hoặc xoay góc 90°, 180°, 270°.
+- `padding_border`: Thêm viền đệm biên ảnh (constant, replicate, reflect).
 
-### 2.4. Trực quan hóa kết quả trên giao diện Desktop
-- **Nút "Run Pipeline" [F5]:** Đặt ở thanh công cụ phía trên kèm phím tắt F5 hoặc Ctrl+Enter. Hiển thị trạng thái xoay vòng khi đang xử lý và huy hiệu thời gian tổng (ví dụ `14.2ms`) khi hoàn tất.
-- **Trạng thái node trên Canvas:** Từng node trên màn hình hiển thị trực quan trạng thái thực thi: biểu tượng Running xoay, huy hiệu xanh Completed kèm thời gian `XX.X ms`, hoặc huy hiệu đỏ Failed khi có lỗi.
-- **Bảng thông số & Preview (Properties Panel):**
-  - **Intermediate Preview Image (`ImagePreviewBox`):** Hỗ trợ xem ảnh sắc nét với nhiều chế độ nền (Checkerboard, Dark, Light), zoom phóng to/thu nhỏ, tải ảnh về máy và chế độ Fullscreen Inspection phóng to toàn màn hình.
-  - **Frame Metadata:** Kích thước (Width x Height), số kênh màu (Channels), Color Space, Kiểu dữ liệu (dtype).
-  - **Structured Feature List:** Danh sách từng đối tượng phát hiện được (Bounding Box x, y, w, h và diện tích px²).
+### 3. Image Processing (`image_processing`)
+- `threshold`: Phân ngưỡng nhị phân (Binary, Binary Invert, Trunc, ToZero).
+- `adaptive_threshold`: Phân ngưỡng thích nghi theo ánh sáng vùng (Mean, Gaussian).
+- `otsu_threshold`: Tự động tìm ngưỡng tối ưu Otsu.
+- `color_threshold`: Trích xuất mặt nạ màu theo dải ngưỡng HSV/BGR (`cv2.inRange`).
+- `morphology`: Phép toán hình thái học (Erode, Dilate, Open, Close, Gradient, TopHat).
+- `edge_detection`: Phát hiện biên độ tương phản cao (Canny, Sobel, Laplacian).
+- `gradient_derivatives`: Tính toán đạo hàm không gian Sobel/Scharr và độ lớn gradient.
+- `image_filter`: Tích chập ảnh với ma trận kernel tùy biến (Emboss, Ridge, Blur).
+- `hough_transform`: Trích xuất đường thẳng hoặc đường tròn tham số bằng biến đổi Hough.
+- `template_matching`: Định vị mẫu hoa văn chuẩn trên ảnh kiểm tra (`cv2.matchTemplate`).
+- `background_subtraction`: Phân đoạn khuyết tật/chuyển động so với ảnh nền mẫu.
+- `image_registration`: Căn chỉnh tọa độ ảnh mục tiêu theo mẫu chuẩn (Translation, Homography).
+
+### 4. Segmentation (`segmentation`)
+- `threshold_segmentation`: Phân đoạn đối tượng tiền ảnh theo dải ngưỡng min/max.
+- `color_segmentation`: Cô lập đối tượng theo khoảng màu sắc Hue-Saturation-Value.
+- `connected_components`: Gán nhãn các thành phần liên thông, tính tâm và diện tích.
+- `watershed_segmentation`: Tách các đối tượng dính liền/chồng lấn bằng thuật toán Watershed.
+- `grabcut_segmentation`: Tách tiền ảnh tương tác dựa trên hộp bao bằng GrabCut.
+- `mask_operations`: Phép toán logic bitwise (AND, OR, XOR, NOT) giữa các mặt nạ.
+- `region_filter`: Lọc bỏ vùng nhiễu theo diện tích tối thiểu/tối đa và tỷ lệ khung hình.
+
+### 5. Feature Extraction (`feature_extraction`)
+- `contour_detection`: Trích xuất đường bao biên dạng, tính bounding box và ảnh preview.
+- `contour_filter`: Lọc đường bao theo diện tích, chu vi và độ tròn (circularity).
+- `blob_analysis`: Phân tích đốm/vết bẩn bằng `cv2.SimpleBlobDetector`.
+- `shape_analysis`: Tính toán thông số hình học (độ lồi, độ tròn, tỷ lệ dài/rộng, moments).
+- `bounding_geometry`: Trích xuất hộp bao thẳng, hộp bao xoay tối thiểu, và đường tròn ngoại tiếp.
+- `corner_detection`: Phát hiện góc đặc trưng dưới mức pixel bằng Shi-Tomasi hoặc Harris.
+- `keypoint_detection`: Trích xuất điểm quan tâm truyền thống (ORB, FAST).
+- `line_circle_extraction`: Khớp đoạn thẳng và đường tròn hình học.
+- `image_statistics`: Thống kê cường độ điểm ảnh (mean, std dev, min, max, entropy).
+- `projection_profile`: Biểu đồ chiếu mật độ điểm ảnh theo chiều ngang và dọc.
+
+### 6. Measurement & Metrology (`measurement_metrology`)
+- `distance_measurement`: Đo khoảng cách Euclid và chênh lệch dX, dY giữa 2 điểm/tâm.
+- `line_measurement`: Đo chiều dài và góc phương vị của đoạn thẳng.
+- `circle_measurement`: Đo đường kính, bán kính, chu vi và tọa độ tâm lỗ/tròn.
+- `rectangle_measurement`: Đo chiều rộng, chiều cao, đường chéo và tỷ lệ khung hình.
+- `angle_measurement`: Đo góc phẳng (độ và radian) tạo bởi 3 điểm hoặc 2 đường thẳng.
+- `caliper_measurement`: Thước đo quang học 1D dò chuyển tiếp biên độ tương phản trên search rake.
+- `gap_measurement`: Đo khe hở và độ phẳng (flushness) giữa 2 mép chi tiết song song.
+- `area_measurement`: Tính diện tích bề mặt thực tế theo đơn vị hiệu chuẩn (mm², µm²).
+- `tolerance_check`: So sánh kích thước đo được với giới hạn dung sai trên/dưới (LSL, USL).
+- `pixel_calibration`: Xác định ma trận tỷ lệ chuyển đổi pixel sang đơn vị kỹ thuật (mm/pixel).
+
+### 7. Decision & Inspection Logic (`decision_inspection_logic`)
+- `compare`: So sánh giá trị với ngưỡng chuẩn theo toán tử (=, !=, <, <=, >, >=).
+- `range_check`: Kiểm tra giá trị nằm trong hay ngoài dải dung sai cho phép [min, max].
+- `logic_gate`: Cổng logic chuẩn (AND, OR, NOT, XOR, NAND, NOR).
+- `conditional_branch`: Rẽ nhánh luồng dữ liệu theo điều kiện Đúng / Sai.
+- `count_check`: Kiểm tra số lượng chi tiết/chân linh kiện có đúng số lượng quy định.
+- `presence_check`: Phát hiện sự hiện diện hay thiếu sót của chi tiết, tem nhãn, gioăng.
+- `rule_evaluation`: Đánh giá bảng luật kết hợp nhiều điều kiện kiểm tra logic.
+- `decision_ok_ng`: Xuất phán quyết tổng thể OK / NG kèm mã lỗi khuyết tật (defect code).
+- `result_aggregation`: Tổng hợp kết quả từ nhiều trạm kiểm tra thành phán quyết cuối cùng.
+
+### 8. Visualization (`visualization`)
+- `result_viewer`: Hiển thị khung hình kết quả, lớp phủ biên dạng và số liệu kiểm tra.
+- `image_overlay`: Hòa trộn mặt nạ màu hoặc biểu đồ nhiệt bán trong suốt lên ảnh gốc.
+- `draw_roi`: Vẽ khung vùng kiểm tra ROI và nhãn tọa độ lên ảnh.
+- `draw_contours`: Vẽ viền đường bao phát hiện được với màu sắc và độ dày tùy chọn.
+- `draw_measurement`: Vẽ mũi tên kích thước, đường gióng và nhãn giá trị đo lường.
+- `draw_labels`: Vẽ nhãn văn bản trạng thái kiểm tra (OK/NG, tên chi tiết, mã sản phẩm).
+- `mask_viewer`: Hiển thị mặt nạ nhị phân 1 kênh bằng bảng màu tương phản cao (colormap).
+- `histogram_viewer`: Vẽ biểu đồ phân bố tần suất sắc độ điểm ảnh.
+- `inspection_result_viewer`: Giao diện Heads-Up Display (HUD) công nghiệp với thanh banner trạng thái đạt/hỏng toàn màn hình.
+
+### 9. Data & Logging (`data_logging`)
+- `save_image`: Lưu ảnh đã xử lý xuống ổ đĩa (PNG, JPEG, BMP).
+- `save_measurement`: Ghi nhật ký số liệu đo lường ra file JSON có dấu thời gian.
+- `save_defect_image`: Lưu trữ có điều kiện: chỉ lưu ảnh khi sản phẩm bị lỗi (NG).
+- `export_csv`: Ghi nối tiếp dòng kết quả kiểm tra vào bảng tính CSV phục vụ SPC.
+- `inspection_logger`: Ghi log sự kiện có cấu trúc (timestamp, part ID, cycle time).
+- `result_history`: Quản lý bộ đệm xoay vòng (ring buffer) các lượt kiểm tra gần nhất.
 
 ---
 
 ## 3. Các API Endpoints của Python Vision Runtime
 
+### 3.1. Pipeline Editor & Runtime Health (`/health`, `/api/pipeline`)
 | Phương thức | Đường dẫn | Chức năng |
 | :--- | :--- | :--- |
-| `GET` | `/health` | Kiểm tra trạng thái hoạt động của Python Runtime và thông tin hệ điều hành |
-| `GET` | `/api/pipeline/supported-nodes` | Danh sách các node và handler đã được đăng ký trong Runtime |
-| `POST` | `/api/pipeline/validate` | Kiểm tra tính hợp lệ của pipeline trước khi chạy (DAG, types, configs) |
-| `POST` | `/api/pipeline/execute` | Thực thi pipeline từ đầu đến cuối và lưu kết quả vào buffer |
-| `GET` | `/api/pipeline/executions/{id}` | Lấy tóm tắt và metadata của một phiên thực thi đã chạy |
+| `GET` | `/health` | Kiểm tra trạng thái hoạt động của Python Runtime, số lượng node hỗ trợ và trạng thái inspection đang chạy |
+| `GET` | `/api/pipeline/supported-nodes` | Danh sách 48 node OpenCV và handler đã được đăng ký trong Runtime |
+| `POST` | `/api/pipeline/validate` | Kiểm tra tính hợp lệ của pipeline trước khi chạy (DAG, port types, configs, error codes) |
+| `POST` | `/api/pipeline/execute` | Thực thi pipeline từ đầu đến cuối trong chế độ Editor và lưu kết quả vào buffer |
 | `GET` | `/api/pipeline/executions/{id}/nodes/{node_id}/preview` | Truy xuất ảnh preview định dạng JPEG của node cụ thể |
 | `DELETE` | `/api/pipeline/executions/{id}` | Xóa bỏ kết quả và giải phóng bộ nhớ của phiên thực thi |
 
----
+### 3.2. Phase 2 — Pipeline Validation & Release Management (`/api/releases`)
+| Phương thức | Đường dẫn | Chức năng |
+| :--- | :--- | :--- |
+| `POST` | `/api/releases/drafts` | Lưu hoặc cập nhật bản nháp pipeline (`Draft`); mọi chỉnh sửa tự động đưa trạng thái về `Draft` |
+| `GET` | `/api/releases/drafts/{pipeline_id}` | Truy xuất trạng thái vòng đời (`Draft` / `Validated` / `Released`) của pipeline |
+| `POST` | `/api/releases/validate` | Kiểm định nghiêm ngặt pipeline và chuyển trạng thái `Draft → Validated` |
+| `POST` | `/api/releases` | Phát hành bản chụp bất biến (`ReleaseSnapshot`) kèm mã băm chuẩn hóa SHA-256 (`checksum`) |
+| `GET` | `/api/releases` | Liệt kê danh sách các bản phát hành (mặc định lọc bỏ các bản đã `Archived`) |
+| `GET` | `/api/releases/{pipeline_id}/active` | Truy xuất bản phát hành đang kích hoạt (`is_active=true`) và kiểm tra tính toàn vẹn SHA-256 |
+| `GET` | `/api/releases/{pipeline_id}/{release_version}` | Xem chi tiết bản phát hành và trạng thái toàn vẹn checksum |
+| `GET` | `/api/releases/{pipeline_id}/{release_version}/verify` | Kiểm tra độc lập mã băm SHA-256 phát hiện chỉnh sửa trái phép |
+| `POST` | `/api/releases/{pipeline_id}/{release_version}/archive` | Lưu trữ (`Released → Archived`) mà không xóa bỏ artifact lịch sử |
+| `POST` | `/api/releases/rollback` | Khôi phục / kích hoạt lại một phiên bản phát hành hợp lệ trước đó |
 
-## 4. Khắc phục lỗi hiển thị ảnh & Chức năng Giao diện Sáng / Tối
-
-### 4.1. Khắc phục lỗi khung hiển thị ảnh bị màu đen (Black Preview Frame)
-- **Nguyên nhân chính:** Thẻ meta `Content-Security-Policy` trong `index.html` trước đó chỉ cho phép `img-src 'self' data: blob:;`. Do đó, Chromium trong Electron đã chặn yêu cầu tải ảnh từ endpoint Python Runtime cục bộ `http://127.0.0.1:8000/api/pipeline/executions/.../preview`. Khi bị chặn, hàm `onError` ẩn thẻ `img`, để lại khung nền màu đen `bg-black/60`.
-- **Giải pháp triệt để:**
-  1. **Cập nhật Content Security Policy (`index.html`):** Cho phép `img-src 'self' data: blob: http://127.0.0.1:* http://localhost:*;`.
-  2. **Xây dựng component `ImagePreviewBox` chuyên dụng:**
-     - Tải ảnh qua Blob ObjectURL với fallback URL trực tiếp và xử lý cache-busting.
-     - Hiển thị spinner loading rõ ràng và thông báo lỗi có nút **\"Thử lại (Reload)\"** thay vì ẩn thẻ.
-     - Tích hợp 3 chế độ nền hiển thị: **Checkerboard (caro độ tương phản cao)** giúp phân biệt rõ ảnh nhị phân / viền đen với nền container, nền **Dark**, và nền **Light**.
-     - Cung cấp công cụ zoom (+/- / Reset 100%), tải ảnh và phóng to toàn màn hình (Fullscreen Modal).
-
-### 4.2. Chức năng chuyển đổi giao diện Sáng / Tối (Light / Dark Mode Switcher)
-- **Quản lý trạng thái (`useThemeStore`):** Sử dụng Zustand với persistence vào `localStorage` (`mvp_theme`). Tự động cập nhật class `dark` / `light` trên thẻ `<html>` và thuộc tính `data-theme`.
-- **Cấu hình Tailwind CSS:** Kích hoạt `darkMode: 'class'`.
-- **Nút chuyển đổi giao diện:** Bố trí nút bấm trực quan (biểu tượng Mặt Trời ☀️ / Mặt Trăng 🌙) tại thanh tiêu đề ứng dụng (Header) và thanh công cụ PipelineEditor.
-- **Đồng bộ toàn bộ thành phần giao diện:** Toàn bộ Header, Node Library, Pipeline Canvas (lưới chấm, minimap, controls), Custom Nodes, Properties Panel, Debug Panel và Modal tạo Node đều hỗ trợ hiển thị hoàn hảo ở cả 2 chế độ Sáng và Tối.
-
----
-
-## 5. Định dạng file Pipeline `.mvp` (Machine Vision Pipeline)
-
-### 5.1. Bản chất định dạng
-- Phần mở rộng: `.mvp` (Ví dụ: `pcb_inspection.mvp`).
-- Cấu trúc: JSON thuần có quản lý phiên bản (`schemaVersion: "1.0.0"`) và định danh `fileFormat: "MVP_PIPELINE"`.
-- Không sử dụng file nén ZIP hoặc định dạng nhị phân trong giai đoạn này.
-
-### 5.2. Thao tác Lưu & Mở file an toàn qua Electron IPC
-- **Save (`Ctrl+S`):** Lưu trực tiếp vào file `.mvp` hiện tại nếu đã lưu trước đó, hoặc mở hộp thoại Save dialog nếu chưa lưu.
-- **Save As (`Ctrl+Shift+S`):** Luôn mở hộp thoại Save dialog để người dùng chỉ định đường dẫn `.mvp` mới.
-- **Tự động thêm đuôi `.mvp`:** Nếu người dùng gõ tên file mà quên phần mở rộng, hệ thống tự động chuẩn hóa thành `*.mvp`.
-- **Tương thích ngược (Backwards Compatibility):** Hỗ trợ mở cả file `.mvp` mới và file `.json` legacy đã tạo trước đó.
-- **Bảo toàn dữ liệu:** Không làm mất ID, tọa độ, kết nối, cấu hình hoặc các metadata mở rộng khi lưu và mở lại.
+### 3.3. Phase 3 & Production Mode UI API (`/api/production`)
+| Phương thức | Đường dẫn | Chức năng |
+| :--- | :--- | :--- |
+| `GET` | `/api/production/releases` | Danh sách các bản phát hành pipeline (mặc định chỉ trả về các bản hợp lệ sẵn sàng chạy Production; hỗ trợ `include_archived=true` cho trang quản lý Read-Only) |
+| `GET` | `/api/production/releases/{pipeline_id}/{release_version}` | Chi tiết bản phát hành Production kèm báo cáo toàn vẹn SHA-256 và danh sách node |
+| `GET` | `/api/production/images/info` | Kiểm tra file ảnh đầu vào trên máy trạm và trả về kích thước `(width, height, channels, file_size_bytes)` |
+| `GET` | `/api/production/images/preview` | Stream ảnh JPEG preview của file ảnh gốc đã chọn trong Production Mode |
+| `POST` | `/api/production/inspections` | Khởi chạy kiểm tra Production trên bản phát hành bất biến và file ảnh đầu vào (tách biệt `execution_status` và `inspection_outcome`: `OK` / `NG` / `UNKNOWN`) |
+| `GET` | `/api/production/inspections` | Liệt kê lịch sử các bản ghi kiểm tra Production gần nhất |
+| `GET` | `/api/production/inspections/{inspection_id}/status` | Truy vấn trạng thái vòng đời kiểm tra (`QUEUED → RUNNING → COMPLETED / FAILED / CANCELLED`) |
+| `GET` | `/api/production/inspections/{inspection_id}` | Truy vấn toàn bộ kết quả đo lường, phán quyết (`OK`/`NG`/`UNKNOWN`), thời gian chạy và preview references |
+| `GET` | `/api/production/inspections/{inspection_id}/nodes/{node_id}/preview` | Truy xuất ảnh JPEG preview gắn riêng với `inspection_id` và `node_id` |
+| `POST` | `/api/production/inspections/{inspection_id}/cancel` | Yêu cầu hủy lượt kiểm tra hoặc trả về trạng thái kết thúc rõ ràng (`409 Conflict` nếu đã hoàn tất) |
 
 ---
 
-## 6. Kiến trúc Node Registry & UI Custom Node Creator
+## 4. Đóng gói & Cài đặt trên Windows (Developer Edition vs Production Edition)
 
-### 6.1. Thêm Node trực tiếp trên giao diện (UI Dynamic Node Creator)
-1. Nhấp vào nút **`+ Custom`** ở tiêu đề khu vực **Node Library**.
-2. Hộp thoại **Create Custom Node** mở ra, cho phép cấu hình trực quan:
-   - **Định danh & Thông tin chung:** `Node Type ID`, `Display Name`, `Category`, `Icon` và `Search Tags`.
-   - **Hợp đồng cổng dữ liệu (Ports Contract):** Tùy ý thêm/bớt các cổng Input và Output, chỉ định kiểu dữ liệu (`ImageFrame`, `MaskFrame`, `DetectionResult`, `MeasurementResult`, `Scalar`, `Boolean`, ...).
-   - **Bộ tham số cấu hình (Dynamic Config Parameters):** Thêm các trường tham số (`number`, `range / slider`, `text`, `checkbox`) kèm giá trị mặc định, min/max.
-3. Node lập tức xuất hiện trong danh mục Node Library và có thể kéo thả, nối dây, hiệu chỉnh tham số ngay lập tức.
+Dự án hỗ trợ đóng gói hai phiên bản độc lập cho Windows 10/11 (x64) từ cùng một codebase bằng `electron-builder`:
 
-### 6.2. Chuẩn hóa hệ thống Data Types
-- **Visual Frames:** `ImageFrame` (tương thích 2 chiều với `IMAGE`), `MaskFrame` (tương thích kết nối vào cổng nhận `ImageFrame`).
-- **Inspection & AI Data:** `DetectionResult` (tương thích `DETECTIONS`), `ClassificationResult`, `OCRResult`.
-- **Metrology & Measurements:** `MeasurementResult`, `InspectionResult`, `Scalar`, `Boolean`.
-- **Tương thích kiểu dữ liệu:** Được kiểm tra tập trung qua hàm `areDataTypesCompatible(sourceType, targetType)` trong `src/shared/contracts.ts`.
+| Thuộc tính | Developer Edition | Production Edition |
+| :--- | :--- | :--- |
+| **Tên sản phẩm** | `NOVA Machine Vision Platform — Developer Edition` | `NOVA Machine Vision Platform — Production Edition` |
+| **Application ID** | `com.nova.machinevision.developer` | `com.nova.machinevision.production` |
+| **Giao diện mặc định** | Pipeline Editor + Mode Switcher | Mở trực tiếp vào **Production Mode UI** |
+| **Quyền chỉnh sửa Pipeline** | Đầy đủ (Editor, Save/Open `.mvp`, Release) | Khóa hoàn toàn (Read-Only, ẩn Editor, IPC & `/api/pipeline`) |
+| **File bộ cài đặt (`.exe`)** | `release/developer/NOVA-Machine-Vision-Developer-Setup-0.1.0.exe` | `release/production/NOVA-Machine-Vision-Production-Setup-0.1.0.exe` |
+| **Thư mục dữ liệu & Logs** | `python_runtime/data` (hoặc `%APPDATA%`) | `%APPDATA%/NOVA Machine Vision Platform Production/runtime_data` & `logs` |
 
----
+### Các lệnh Build & Đóng gói bộ cài đặt Windows
 
-## 7. Hướng dẫn chạy, kiểm thử & Xử lý sự cố
-
-### 7.1. Khởi chạy Python Vision Runtime
-Môi trường Python yêu cầu OpenCV và FastAPI (Sử dụng Conda environment `LabelCheckAPI` hoặc môi trường đã cài đặt):
 ```powershell
-# Kích hoạt conda environment đã cài đặt opencv
-conda activate LabelCheckAPI
+# 1. Build mã nguồn cho từng phiên bản
+npm run build:developer
+npm run build:production
 
-# Chạy Python Vision Runtime trên cổng 8000
-npm run py:start
+# 2. Chạy thử trực tiếp trên môi trường local theo từng chế độ
+npm run start:developer
+npm run start:production
 
-# Hoặc khởi chạy trực tiếp bằng python
-python -m vision_runtime.main
+# 3. Đóng gói thư mục chạy thử (win-unpacked)
+npm run package:developer
+npm run package:production
+
+# 4. Xuất file cài đặt Windows NSIS Installer (.exe)
+npm run dist:developer
+npm run dist:production
 ```
 
-### 7.2. Khởi chạy Desktop Application (Electron + React)
-```powershell
-# Chạy ứng dụng ở chế độ phát triển
-npm run dev
+---
 
-# Hoặc biên dịch bản production và chạy
-npm run build
-npm start
-```
+## 5. Kiểm thử tự động (100% Pass Rate)
 
-### 7.3. Kiểm thử tự động (100% Pass Rate)
+Hệ thống được kiểm thử tự động toàn diện từ unit test từng handler, quản lý phát hành (Phase 2), thực thi Production (Phase 3), giao diện Production Mode UI, phân tách quyền hạn đóng gói Production Edition đến kiểm thử tích hợp toàn bộ luồng đồ thị DAG trên cả Frontend và Backend:
+
 ```powershell
-# 1. Kiểm thử Frontend (37 tests Vitest) + TypeScript strict check
+# 1. Kiểm thử Frontend (57 tests Vitest) + TypeScript strict check
 npm run typecheck
-npm run test
+npm test -- --run
 
-# 2. Kiểm thử Python Runtime (18 tests Pytest)
-conda activate LabelCheckAPI
-pytest python_runtime/tests -v
+# 2. Kiểm thử Python Runtime trên môi trường Conda `api` (58 tests Pytest)
+C:\Users\admin\miniconda3\envs\api\python.exe -m pytest python_runtime/tests/ -v
 ```
-
-### 7.4. Xử lý sự cố (Troubleshooting): Lỗi `ImportError: numpy.core.multiarray failed to import`
-
-#### Nguyên nhân:
-Lỗi này xảy ra khi môi trường Python cài đặt **NumPy 2.x** (ví dụ 2.0+, 2.2+) trong khi thư viện **OpenCV (`opencv-python`)** được biên dịch bằng C-API của **NumPy 1.x** (C-extension ABI không tương thích giữa 1.x và 2.x).
-
-#### Cách khắc phục:
-1. **Khắc phục nhanh qua pip (Khuyến nghị):**
-   Hạ cấp `numpy` về phiên bản `1.x` mới nhất:
-   ```powershell
-   pip install "numpy<2"
-   ```
-2. **Cài đặt lại dependencies theo đúng file [`python_runtime/requirements.txt`](file:///C:/project/machine_vision_platform/python_runtime/requirements.txt):**
-   ```powershell
-   pip install -r python_runtime/requirements.txt
-   ```
-3. **Kiểm tra import thành công:**
-   ```powershell
-   python -c "import cv2, numpy; print('OpenCV:', cv2.__version__, '| NumPy:', numpy.__version__)"
-   ```
 
 ---
 
-## 8. Bảng tổng hợp trạng thái nghiệm thu
+## 6. Bảng tổng hợp trạng thái nghiệm thu
 
 | Hạng mục kiểm tra | Trạng thái | Chi tiết triển khai |
 | :--- | :---: | :--- |
-| **Sửa lỗi hiển thị ảnh đen (Image Preview Box)** | Hoàn thành | Cập nhật CSP `img-src` cho `127.0.0.1:*`, tải ảnh an toàn qua Blob URL, nền caro (checkerboard) cho binary mask, zoom/pan/fullscreen |
-| **Giao diện Sáng / Tối (Dark / Light Theme)** | Hoàn thành | Zustand themeStore với `localStorage`, nút chuyển đổi Header & Toolbar, đồng bộ React Flow, toàn bộ panels và modals |
-| **OpenCV Image Processing** | Hoàn thành | Đầy đủ 6 node cốt lõi: `image_file`, `roi_crop`, `grayscale`, `threshold`, `contour_detection`, `result_viewer` + `gaussian_blur` |
-| **Topological DAG Executor** | Hoàn thành | Sắp xếp tô-pô theo thuật toán Kahn, phát hiện chu trình, cô lập lỗi và đo lường thời gian thực thi bằng `time.perf_counter()` |
-| **Execution Buffer & Preview API** | Hoàn thành | Lưu trữ đệm trong RAM có giới hạn, dọn dẹp theo TTL, nén ảnh JPEG preview phục vụ giao diện |
-| **Electron Controlled Image Picker** | Hoàn thành | IPC `dialog:select-image` kết hợp preload bridge `selectImageFile` và nút Browse trên form cấu hình |
-| **Giao diện Pipeline Editor tích hợp** | Hoàn thành | Nút \"Run Pipeline\" [F5], huy hiệu trạng thái trên canvas, hiển thị ảnh preview và bảng đối tượng phát hiện trên Properties Panel |
-| **Định dạng file .mvp** | Hoàn thành | Lưu/mở pipeline .mvp giữ nguyên cấu trúc, tương thích ngược với JSON |
-| **Kiểm thử tự động** | Hoàn thành | **37/37 Vitest tests** + **18/18 Pytest tests** vượt qua 100%, 0 lỗi TypeScript strict |
+| **9 Standard Industrial Categories** | Hoàn thành | Đầy đủ 9 danh mục: Acquisition, Preparation, Processing, Segmentation, Features, Metrology, Logic, Visualization, Data & Logging |
+| **Real OpenCV Handlers** | Hoàn thành | Handlers viết bằng OpenCV/NumPy thực tế, không có mock/fake algorithms, không phụ thuộc AI/ONNX |
+| **Phase 1 — Production Readiness Audit** | Hoàn thành | Báo cáo kiểm toán đầy đủ tại `docs/PRODUCTION_FOUNDATION_AUDIT.md` |
+| **Phase 2 — Validation & Release Management** | Hoàn thành | Vòng đời `Draft → Validated → Released → Archived`, SHA-256 canonical checksum, lưu trữ nguyên tử (`os.replace`), rollback & migration `.mvp` |
+| **Phase 3 — Production Execution API** | Hoàn thành | Vòng đời `QUEUED → RUNNING → COMPLETED / FAILED / CANCELLED`, tách biệt `execution_status` và `inspection_outcome` (`OK`, `NG`, `UNKNOWN`), khóa đồng thời an toàn |
+| **Production Mode UI (NOVA Workstation)** | Hoàn thành | 6 trang chức năng (`Dashboard`, `Inspection`, `History`, `Pipeline Management Read-Only`, `System Status`, `Settings`), chuyển đổi `Developer Mode` / `Production Mode`, phát hành trực tiếp từ Editor |
+| **Production Edition Packaging (Windows NSIS)** | Hoàn thành | Bộ cài đặt riêng biệt `NOVA-Machine-Vision-Production-Setup-0.1.0.exe` và `NOVA-Machine-Vision-Developer-Setup-0.1.0.exe`, tự động quản lý vòng đời Python Runtime và phân tách `%APPDATA%` |
+| **Kiểm thử tự động** | Hoàn thành | **57/57 Vitest tests** + **58/58 Pytest tests** vượt qua 100%, 0 lỗi TypeScript strict |

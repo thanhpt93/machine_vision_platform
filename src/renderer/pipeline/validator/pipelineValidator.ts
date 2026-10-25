@@ -5,8 +5,28 @@ import {
 } from '@/shared/contracts';
 import { getNodeContract } from '../registry/nodeRegistry';
 
+export type ValidationErrorCode =
+  | 'EMPTY_PIPELINE'
+  | 'INVALID_NODE_ID'
+  | 'DUPLICATE_NODE_ID'
+  | 'UNKNOWN_NODE_TYPE'
+  | 'UNSUPPORTED_RUNTIME_NODE'
+  | 'INVALID_NODE_CONFIG'
+  | 'DANGEROUS_CONFIG_PAYLOAD'
+  | 'INVALID_FILE_REFERENCE'
+  | 'SELF_CONNECTION'
+  | 'MISSING_SOURCE_NODE'
+  | 'MISSING_TARGET_NODE'
+  | 'INVALID_SOURCE_PORT'
+  | 'INVALID_TARGET_PORT'
+  | 'PORT_TYPE_MISMATCH'
+  | 'MULTIPLE_INPUT_CONNECTIONS'
+  | 'MISSING_REQUIRED_INPUT'
+  | 'CYCLE_DETECTED';
+
 export interface ValidationError {
   type: 'NODE_ERROR' | 'EDGE_ERROR' | 'CYCLE_ERROR' | 'CONFIG_ERROR' | 'PORT_ERROR';
+  code?: ValidationErrorCode;
   nodeId?: string;
   edgeId?: string;
   portId?: string;
@@ -19,10 +39,47 @@ export interface ValidationReport {
   isValid: boolean;
   canSave: boolean;
   canExecute: boolean;
+  canRelease?: boolean;
   errors: ValidationError[];
   warnings: ValidationError[];
   cycleNodes?: string[];
   topologicalOrder?: string[];
+}
+
+const DANGEROUS_CONFIG_PATTERNS: RegExp[] = [
+  /__import__\s*\(/i,
+  /\beval\s*\(/i,
+  /\bexec\s*\(/i,
+  /\bos\.system\s*\(/i,
+  /\bsubprocess\./i,
+  /<script\b/i,
+];
+
+function findDangerousConfigField(
+  config: Record<string, any>
+): { field: string; reason: string } | null {
+  for (const [key, val] of Object.entries(config || {})) {
+    if (typeof val === 'string') {
+      for (const pattern of DANGEROUS_CONFIG_PATTERNS) {
+        if (pattern.test(val)) {
+          return {
+            field: key,
+            reason: `Unsafe or executable expression detected in config field "${key}"`,
+          };
+        }
+      }
+      if (
+        (key.toLowerCase().includes('path') || key.toLowerCase().includes('file')) &&
+        (val.includes('..\\..') || val.includes('../..'))
+      ) {
+        return {
+          field: key,
+          reason: `Directory traversal path is not allowed in "${key}"`,
+        };
+      }
+    }
+  }
+  return null;
 }
 
 export function validatePipeline(
@@ -39,6 +96,7 @@ export function validatePipeline(
     if (!node.id || node.id.trim() === '') {
       errors.push({
         type: 'NODE_ERROR',
+        code: 'INVALID_NODE_ID',
         nodeId: node.id,
         message: 'Node has empty or invalid ID',
         severity: 'error',
@@ -55,6 +113,7 @@ export function validatePipeline(
   duplicateNodeIds.forEach((id) => {
     errors.push({
       type: 'NODE_ERROR',
+      code: 'DUPLICATE_NODE_ID',
       nodeId: id,
       message: `Duplicate Node ID detected: "${id}"`,
       severity: 'error',
@@ -73,6 +132,7 @@ export function validatePipeline(
     if (!contract) {
       errors.push({
         type: 'NODE_ERROR',
+        code: 'UNKNOWN_NODE_TYPE',
         nodeId: node.id,
         message: `Unknown node type "${node.nodeType}" on node "${node.name}"`,
         severity: 'error',
@@ -85,9 +145,23 @@ export function validatePipeline(
       hasUnsupportedRuntimeNode = true;
       warnings.push({
         type: 'NODE_ERROR',
+        code: 'UNSUPPORTED_RUNTIME_NODE',
         nodeId: node.id,
         message: `Node "${node.name}" (${node.nodeType}) has no Python Runtime implementation yet`,
         severity: 'warning',
+      });
+    }
+
+    // Check for unsafe executable payload / path traversal in config
+    const dangerousCheck = findDangerousConfigField(node.config || {});
+    if (dangerousCheck) {
+      errors.push({
+        type: 'CONFIG_ERROR',
+        code: 'DANGEROUS_CONFIG_PAYLOAD',
+        nodeId: node.id,
+        field: dangerousCheck.field,
+        message: `[${node.name}] ${dangerousCheck.reason}`,
+        severity: 'error',
       });
     }
 
@@ -98,6 +172,7 @@ export function validatePipeline(
         const fieldName = err.path.join('.') || 'config';
         errors.push({
           type: 'CONFIG_ERROR',
+          code: 'INVALID_NODE_CONFIG',
           nodeId: node.id,
           field: fieldName,
           message: `[${node.name}] Invalid "${fieldName}": ${err.message}`,
@@ -116,6 +191,7 @@ export function validatePipeline(
     if (edge.sourceNodeId === edge.targetNodeId) {
       errors.push({
         type: 'EDGE_ERROR',
+        code: 'SELF_CONNECTION',
         edgeId: edge.id,
         nodeId: edge.sourceNodeId,
         message: `Self-connection detected on node "${edge.sourceNodeId}"`,
@@ -129,6 +205,7 @@ export function validatePipeline(
     if (!sourceNode) {
       errors.push({
         type: 'EDGE_ERROR',
+        code: 'MISSING_SOURCE_NODE',
         edgeId: edge.id,
         message: `Edge references non-existent source node "${edge.sourceNodeId}"`,
         severity: 'error',
@@ -141,6 +218,7 @@ export function validatePipeline(
     if (!targetNode) {
       errors.push({
         type: 'EDGE_ERROR',
+        code: 'MISSING_TARGET_NODE',
         edgeId: edge.id,
         message: `Edge references non-existent target node "${edge.targetNodeId}"`,
         severity: 'error',
@@ -159,6 +237,7 @@ export function validatePipeline(
     if (!sourcePort) {
       errors.push({
         type: 'PORT_ERROR',
+        code: 'INVALID_SOURCE_PORT',
         edgeId: edge.id,
         nodeId: sourceNode.id,
         portId: edge.sourcePortId,
@@ -172,6 +251,7 @@ export function validatePipeline(
     if (!targetPort) {
       errors.push({
         type: 'PORT_ERROR',
+        code: 'INVALID_TARGET_PORT',
         edgeId: edge.id,
         nodeId: targetNode.id,
         portId: edge.targetPortId,
@@ -185,6 +265,7 @@ export function validatePipeline(
     if (!areDataTypesCompatible(sourcePort.dataType, targetPort.dataType)) {
       errors.push({
         type: 'EDGE_ERROR',
+        code: 'PORT_TYPE_MISMATCH',
         edgeId: edge.id,
         message: `Type mismatch on edge from "${sourceNode.name}.${sourcePort.name}" (${sourcePort.dataType}) to "${targetNode.name}.${targetPort.name}" (${targetPort.dataType})`,
         severity: 'error',
@@ -201,6 +282,7 @@ export function validatePipeline(
     if (existing.length > 1) {
       errors.push({
         type: 'PORT_ERROR',
+        code: 'MULTIPLE_INPUT_CONNECTIONS',
         edgeId: edge.id,
         nodeId: targetNode.id,
         portId: edge.targetPortId,
@@ -226,6 +308,7 @@ export function validatePipeline(
         if (inputPort.required) {
           warnings.push({
             type: 'PORT_ERROR',
+            code: 'MISSING_REQUIRED_INPUT',
             nodeId: node.id,
             portId: inputPort.id,
             message: `Required input "${inputPort.name}" on node "${node.name}" is not connected`,
@@ -268,6 +351,7 @@ export function validatePipeline(
         cycleNodes.add(v);
         errors.push({
           type: 'CYCLE_ERROR',
+          code: 'CYCLE_DETECTED',
           nodeId: v,
           message: `Cycle detected involving node "${nodeMap.get(v)?.name || v}"`,
           severity: 'error',
@@ -289,7 +373,7 @@ export function validatePipeline(
 
   const topologicalOrder = hasCycle ? undefined : [...postOrder].reverse();
 
-  // Determine canSave vs canExecute
+  // Determine canSave vs canExecute vs canRelease
   const hasFatalErrors = errors.some(
     (e) => e.type === 'NODE_ERROR' && e.message.includes('Duplicate')
   );
@@ -307,14 +391,65 @@ export function validatePipeline(
     !hasUnsupportedRuntimeNode &&
     topologicalOrder !== undefined;
 
+  const canRelease = canExecute;
+
   return {
     isValid: errors.length === 0,
     canSave,
     canExecute,
+    canRelease,
     errors,
     warnings,
     cycleNodes: hasCycle ? Array.from(cycleNodes) : undefined,
     topologicalOrder,
+  };
+}
+
+/**
+ * Strict validation for Phase 2 Release Management.
+ * Promotes missing required inputs, unsupported runtime nodes, and empty pipelines
+ * to blocking errors so that invalid pipelines can never be marked Validated or Released.
+ */
+export function validatePipelineForRelease(
+  nodes: PipelineNodeInstance[],
+  edges: PipelineEdge[]
+): ValidationReport {
+  const baseReport = validatePipeline(nodes, edges);
+  const releaseErrors: ValidationError[] = [...baseReport.errors];
+  const releaseWarnings: ValidationError[] = [];
+
+  if (nodes.length === 0) {
+    releaseErrors.push({
+      type: 'NODE_ERROR',
+      code: 'EMPTY_PIPELINE',
+      message: 'Pipeline must contain at least one node before it can be validated or released.',
+      severity: 'error',
+    });
+  }
+
+  for (const warning of baseReport.warnings) {
+    if (
+      warning.code === 'MISSING_REQUIRED_INPUT' ||
+      warning.code === 'UNSUPPORTED_RUNTIME_NODE'
+    ) {
+      releaseErrors.push({
+        ...warning,
+        severity: 'error',
+      });
+    } else {
+      releaseWarnings.push(warning);
+    }
+  }
+
+  const isReleaseValid = releaseErrors.length === 0 && baseReport.canExecute;
+
+  return {
+    ...baseReport,
+    isValid: isReleaseValid,
+    canExecute: isReleaseValid,
+    canRelease: isReleaseValid,
+    errors: releaseErrors,
+    warnings: releaseWarnings,
   };
 }
 

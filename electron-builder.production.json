@@ -1,0 +1,53 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.nova.machinevision.production",
+  "productName": "NOVA Machine Vision Platform Production",
+  "copyright": "Copyright © 2026 NOVA Machine Vision Platform",
+  "directories": {
+    "output": "release/production"
+  },
+  "files": [
+    "dist/**/*",
+    "package.json"
+  ],
+  "extraResources": [
+    {
+      "from": "python_runtime/vision_runtime",
+      "to": "python_runtime/vision_runtime",
+      "filter": ["**/*", "!**/__pycache__/**", "!**/*.pyc"]
+    },
+    {
+      "from": "python_runtime/data/releases",
+      "to": "python_runtime/data/releases",
+      "filter": ["**/*.json"]
+    },
+    {
+      "from": "python_runtime/requirements.txt",
+      "to": "python_runtime/requirements.txt"
+    },
+    {
+      "from": "sample_images",
+      "to": "sample_images",
+      "filter": ["**/*"]
+    }
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ],
+    "artifactName": "NOVA-Machine-Vision-Production-Setup-${version}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "NOVA Machine Vision Platform — Production Edition",
+    "uninstallDisplayName": "NOVA Machine Vision Platform — Production Edition",
+    "deleteAppDataOnUninstall": false
+  }
+}

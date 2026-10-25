@@ -188,6 +188,13 @@ class PipelineExecutor:
                     elif port.required:
                         missing_required_port = f"Required input port '{port.id}' has no incoming connection"
 
+            # Also bind any explicit edge connections targeting this node (supports dynamic/optional ports)
+            for (tgt_n, tgt_p), (src_n, src_p) in edge_incoming.items():
+                if tgt_n == node_id and tgt_p not in inputs_data:
+                    src_outputs = node_outputs.get(src_n, {})
+                    if src_p in src_outputs:
+                        inputs_data[tgt_p] = src_outputs[src_p]
+
             if missing_required_port:
                 failed_node_id = node_id
                 overall_error = missing_required_port

@@ -1,10 +1,27 @@
 node_modules/
 dist/
+release/
+out/
+build/
 .idea/
 .vscode/
 *.log
 .env
 .env.local
+
+# Heavy installer / binary / archive artifacts (>100MB / build outputs)
+*.exe
+*.msi
+*.asar
+*.blockmap
+*.7z
+*.zip
+*.tar.gz
+*.onnx
+*.pt
+*.pth
+*.weights
+*.h5
 
 # Python
 __pycache__/
@@ -17,3 +34,5 @@ venv/
 .venv/
 .pytest_cache/
 *.egg-info/
+python_runtime/data/inspections/
+python_runtime/data/drafts/

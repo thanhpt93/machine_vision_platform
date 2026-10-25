@@ -1,0 +1,172 @@
+{
+  "archived_at": null,
+  "checksum": "f3cd0fc329334b6c5f66f94505f0fb6c824e7b665b0c5960a5233517dde0e7c0",
+  "created_at": "2026-10-25T13:52:40.906798Z",
+  "is_active": true,
+  "node_versions": {
+    "circle_measurement": "1.0.0",
+    "draw_measurement": "1.0.0",
+    "grayscale": "1.0.0",
+    "image_file": "1.0.0",
+    "invert": "1.0.0",
+    "result_viewer": "1.0.0",
+    "threshold": "1.0.0"
+  },
+  "pipeline": {
+    "createdAt": "2026-10-25T09:05:14.572Z",
+    "description": "Automated circle dimensional measurement: Bottle Cap -> Crop -> Grayscale -> Threshold -> Circle Measurement -> Dimension Overlay (on Grayscale) -> Viewer",
+    "edges": [
+      {
+        "id": "edge_thresh_circle",
+        "sourceNodeId": "node_threshold_1",
+        "sourcePortId": "image_out",
+        "targetNodeId": "node_circle_measurement_1",
+        "targetPortId": "mask_in"
+      },
+      {
+        "id": "edge_circle_draw",
+        "sourceNodeId": "node_circle_measurement_1",
+        "sourcePortId": "measurement",
+        "targetNodeId": "node_draw_measurement_1",
+        "targetPortId": "measurement_in"
+      },
+      {
+        "id": "edge_draw_viewer",
+        "sourceNodeId": "node_draw_measurement_1",
+        "sourcePortId": "image_out",
+        "targetNodeId": "node_result_viewer_1",
+        "targetPortId": "image_in"
+      },
+      {
+        "id": "edge_node_image_file_1_image_to_node_grayscale_1_image_in",
+        "sourceNodeId": "node_image_file_1",
+        "sourcePortId": "image",
+        "targetNodeId": "node_grayscale_1",
+        "targetPortId": "image_in"
+      },
+      {
+        "id": "edge_node_grayscale_1_image_out_to_node_invert_90b50lk_image_in",
+        "sourceNodeId": "node_grayscale_1",
+        "sourcePortId": "image_out",
+        "targetNodeId": "node_invert_90b50lk",
+        "targetPortId": "image_in"
+      },
+      {
+        "id": "edge_node_invert_90b50lk_image_out_to_node_threshold_1_image_in",
+        "sourceNodeId": "node_invert_90b50lk",
+        "sourcePortId": "image_out",
+        "targetNodeId": "node_threshold_1",
+        "targetPortId": "image_in"
+      },
+      {
+        "id": "edge_node_grayscale_1_image_out_to_node_draw_measurement_1_image_in",
+        "sourceNodeId": "node_grayscale_1",
+        "sourcePortId": "image_out",
+        "targetNodeId": "node_draw_measurement_1",
+        "targetPortId": "image_in"
+      }
+    ],
+    "fileFormat": "MVP_PIPELINE",
+    "id": "pipeline_6v7gxwk",
+    "metadata": {},
+    "name": "Bottle Cap Circle Metrology Pipeline (OpenCV)",
+    "nodes": [
+      {
+        "config": {
+          "filePath": "C:\\Users\\admin\\Downloads\\istockphoto-1076800564-170667a.jpg"
+        },
+        "id": "node_image_file_1",
+        "name": "Bottle Cap Source",
+        "nodeType": "image_file",
+        "position": {
+          "x": 30.0,
+          "y": 165.0
+        }
+      },
+      {
+        "config": {
+          "equalizeHist": false
+        },
+        "id": "node_grayscale_1",
+        "name": "Grayscale",
+        "nodeType": "grayscale",
+        "position": {
+          "x": 300.0,
+          "y": 165.0
+        }
+      },
+      {
+        "config": {
+          "maxVal": 255,
+          "mode": "BINARY",
+          "threshold": 125
+        },
+        "id": "node_threshold_1",
+        "name": "Threshold Binarizer",
+        "nodeType": "threshold",
+        "position": {
+          "x": 885.0,
+          "y": 390.0
+        }
+      },
+      {
+        "config": {
+          "circle_index": 0,
+          "scale": 1,
+          "unit": "mm"
+        },
+        "id": "node_circle_measurement_1",
+        "name": "Circle Measurement",
+        "nodeType": "circle_measurement",
+        "position": {
+          "x": 1185.0,
+          "y": 390.0
+        }
+      },
+      {
+        "config": {
+          "show_label": true
+        },
+        "id": "node_draw_measurement_1",
+        "name": "Draw Dimension",
+        "nodeType": "draw_measurement",
+        "position": {
+          "x": 1485.0,
+          "y": 195.0
+        }
+      },
+      {
+        "config": {
+          "showHistogram": false,
+          "showOverlay": true,
+          "title": "Bottle Cap Circle Measurement",
+          "zoomLevel": 1
+        },
+        "id": "node_result_viewer_1",
+        "name": "Result Viewer",
+        "nodeType": "result_viewer",
+        "position": {
+          "x": 1800.0,
+          "y": 255.0
+        }
+      },
+      {
+        "config": {},
+        "id": "node_invert_90b50lk",
+        "name": "Invert",
+        "nodeType": "invert",
+        "position": {
+          "x": 585.0,
+          "y": 405.0
+        }
+      }
+    ],
+    "schemaVersion": "1.0.0",
+    "updatedAt": "2026-10-25T13:52:40.913Z"
+  },
+  "pipeline_id": "pipeline_6v7gxwk",
+  "release_notes": "Released from Pipeline Editor (Bottle Cap Circle Metrology Pipeline (OpenCV))",
+  "release_version": "1.0.1",
+  "schema_version": "1.0.0",
+  "status": "Released"
+}

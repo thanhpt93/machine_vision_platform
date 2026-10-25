@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { usePipelineStore } from '../store/pipelineStore';
 import { useThemeStore } from '../../store/themeStore';
+import { runtimeApi } from '../../services/runtimeApi';
 import { NodeLibrary } from './NodeLibrary';
 import { PipelineCanvas } from './PipelineCanvas';
 import { PropertiesPanel } from './PropertiesPanel';
@@ -20,13 +21,19 @@ import {
   XCircle,
   Sun,
   Moon,
+  Rocket,
+  X,
 } from 'lucide-react';
 
 interface PipelineEditorProps {
   onOpenDiagnostics?: () => void;
+  onOpenProductionMode?: () => void;
 }
 
-export const PipelineEditor: React.FC<PipelineEditorProps> = ({ onOpenDiagnostics }) => {
+export const PipelineEditor: React.FC<PipelineEditorProps> = ({
+  onOpenDiagnostics,
+  onOpenProductionMode,
+}) => {
   const pipelineMeta = usePipelineStore((state) => state.pipelineMeta);
   const isDirty = usePipelineStore((state) => state.isDirty);
   const currentFilePath = usePipelineStore((state) => state.currentFilePath);
@@ -51,6 +58,13 @@ export const PipelineEditor: React.FC<PipelineEditorProps> = ({ onOpenDiagnostic
   const [isEditingName, setIsEditingName] = useState(false);
   const [pipelineName, setPipelineName] = useState(pipelineMeta.name);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Release Pipeline Modal State
+  const [showReleaseModal, setShowReleaseModal] = useState(false);
+  const [releaseVersionInput, setReleaseVersionInput] = useState('1.0.0');
+  const [releaseNotes, setReleaseNotes] = useState('');
+  const [isReleasing, setIsReleasing] = useState(false);
+  const [releaseSuccessBanner, setReleaseSuccessBanner] = useState<string | null>(null);
 
   const isDirtyRef = useRef(isDirty);
   isDirtyRef.current = isDirty;
@@ -117,6 +131,35 @@ export const PipelineEditor: React.FC<PipelineEditorProps> = ({ onOpenDiagnostic
       }
     }
   }, [runPipeline]);
+
+  const handleCreateRelease = async () => {
+    setErrorMessage(null);
+    setReleaseSuccessBanner(null);
+    setIsReleasing(true);
+    try {
+      const serialized = exportPipeline();
+      const created = await runtimeApi.createReleaseFromEditor({
+        pipeline: serialized as unknown as Record<string, any>,
+        releaseVersion: releaseVersionInput.trim() || '1.0.0',
+        releaseNotes: releaseNotes.trim() || `Released from Pipeline Editor (${pipelineMeta.name})`,
+        activate: true,
+      });
+      setShowReleaseModal(false);
+      setReleaseNotes('');
+      const displayPipeName = created.pipeline?.name || pipelineMeta.name;
+      setReleaseSuccessBanner(
+        `Released ${displayPipeName} v${created.release_version} (SHA-256: ${created.checksum.slice(
+          0,
+          10
+        )}...) for Production Mode.`
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMessage(`Release validation failed: ${msg}`);
+    } finally {
+      setIsReleasing(false);
+    }
+  };
 
   // Hook up Electron Native Menu actions & Global keyboard shortcuts
   useEffect(() => {
@@ -280,7 +323,7 @@ export const PipelineEditor: React.FC<PipelineEditorProps> = ({ onOpenDiagnostic
 
         {/* Action Buttons */}
         <div className="flex items-center space-x-2">
-          {/* Phase 3: Run Pipeline Execution Button */}
+          {/* Phase 3: Run Pipeline Execution Button & Release Pipeline Button */}
           <div className="flex items-center space-x-2 pr-2 border-r border-slate-200 dark:border-slate-800">
             <button
               type="button"
@@ -305,6 +348,16 @@ export const PipelineEditor: React.FC<PipelineEditorProps> = ({ onOpenDiagnostic
                   <span className="text-[10px] opacity-75 font-mono ml-0.5">[F5]</span>
                 </>
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowReleaseModal(true)}
+              className="flex items-center space-x-1.5 px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-xs transition-colors"
+              title="Validate and publish an immutable pipeline release for Production Mode"
+            >
+              <Rocket className="w-3.5 h-3.5" />
+              <span>Release for Production</span>
             </button>
 
             {/* Execution status indicator badge */}
@@ -431,6 +484,34 @@ export const PipelineEditor: React.FC<PipelineEditorProps> = ({ onOpenDiagnostic
         </div>
       </div>
 
+      {/* Release Success Banner */}
+      {releaseSuccessBanner && (
+        <div className="bg-emerald-100 dark:bg-emerald-950/80 border-b border-emerald-300 dark:border-emerald-800 px-4 py-2 flex items-center justify-between text-xs text-emerald-900 dark:text-emerald-200">
+          <div className="flex items-center space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>{releaseSuccessBanner}</span>
+          </div>
+          <div className="flex items-center space-x-3">
+            {onOpenProductionMode && (
+              <button
+                type="button"
+                onClick={onOpenProductionMode}
+                className="px-2.5 py-0.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white font-semibold"
+              >
+                Open Production Mode
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setReleaseSuccessBanner(null)}
+              className="text-emerald-800 dark:text-emerald-300 underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Global Error Banner */}
       {errorMessage && (
         <div className="bg-rose-100 dark:bg-rose-950/80 border-b border-rose-300 dark:border-rose-800 px-4 py-2 flex items-center justify-between text-xs text-rose-800 dark:text-rose-200">
@@ -462,6 +543,101 @@ export const PipelineEditor: React.FC<PipelineEditorProps> = ({ onOpenDiagnostic
 
       {/* Area D: Debug Panel */}
       <DebugPanel />
+
+      {/* Release Pipeline Modal */}
+      {showReleaseModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900">
+              <div className="flex items-center space-x-2">
+                <Rocket className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Validate & Release Pipeline for Production
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReleaseModal(false)}
+                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3 text-xs">
+              <p className="text-slate-600 dark:text-slate-400">
+                Publishing a release validates the pipeline topology and creates an immutable,
+                SHA-256 checksummed snapshot in the Python Runtime for{' '}
+                <strong>Production Mode</strong> execution.
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Pipeline Name
+                  </label>
+                  <div className="px-3 py-1.5 rounded bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono text-slate-800 dark:text-slate-200 truncate">
+                    {pipelineMeta.name}
+                  </div>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Release Version (SemVer)
+                  </label>
+                  <input
+                    type="text"
+                    value={releaseVersionInput}
+                    onChange={(e) => setReleaseVersionInput(e.target.value)}
+                    placeholder="1.0.0"
+                    className="w-full px-3 py-1.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Release Notes / Description
+                </label>
+                <textarea
+                  rows={3}
+                  value={releaseNotes}
+                  onChange={(e) => setReleaseNotes(e.target.value)}
+                  placeholder="Describe inspection criteria, tolerance thresholds, or calibration settings..."
+                  className="w-full px-3 py-1.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowReleaseModal(false)}
+                  className="px-3 py-1.5 rounded border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateRelease}
+                  disabled={isReleasing}
+                  className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-semibold disabled:opacity-50"
+                >
+                  {isReleasing ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Validating & Releasing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Rocket className="w-3.5 h-3.5" />
+                      <span>Publish Immutable Release</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
