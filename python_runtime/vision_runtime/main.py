@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from vision_runtime.api.health import router as health_router
+from vision_runtime.api.pipeline import router as pipeline_router
 from vision_runtime.config import settings
 
 app = FastAPI(
@@ -23,6 +24,7 @@ app.add_middleware(
 )
 
 app.include_router(health_router)
+app.include_router(pipeline_router)
 
 
 @app.get("/", summary="Root status")
@@ -32,6 +34,7 @@ async def root():
         "version": settings.version,
         "docs": "/docs",
         "health": "/health",
+        "pipeline_api": "/api/pipeline",
     }
 
 

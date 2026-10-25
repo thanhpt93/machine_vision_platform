@@ -1,10 +1,111 @@
-import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, dialog, Menu } from 'electron';
 import path from 'path';
 import fs from 'fs/promises';
 
 let mainWindow: BrowserWindow | null = null;
 
 const isDev = process.env.NODE_ENV === 'development';
+
+function setupApplicationMenu(): void {
+  const isMac = process.platform === 'darwin';
+
+  const template: Electron.MenuItemConstructorOptions[] = [
+    ...(isMac
+      ? [
+          {
+            label: app.name,
+            submenu: [
+              { role: 'about' as const },
+              { type: 'separator' as const },
+              { role: 'services' as const },
+              { type: 'separator' as const },
+              { role: 'hide' as const },
+              { role: 'hideOthers' as const },
+              { role: 'unhide' as const },
+              { type: 'separator' as const },
+              { role: 'quit' as const },
+            ],
+          },
+        ]
+      : []),
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'New Pipeline',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => {
+            mainWindow?.webContents.send('menu:action', 'new');
+          },
+        },
+        {
+          label: 'Open Pipeline...',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => {
+            mainWindow?.webContents.send('menu:action', 'open');
+          },
+        },
+        { type: 'separator' },
+        {
+          label: 'Save Pipeline',
+          accelerator: 'CmdOrCtrl+S',
+          click: () => {
+            mainWindow?.webContents.send('menu:action', 'save');
+          },
+        },
+        {
+          label: 'Save Pipeline As...',
+          accelerator: 'CmdOrCtrl+Shift+S',
+          click: () => {
+            mainWindow?.webContents.send('menu:action', 'save-as');
+          },
+        },
+        { type: 'separator' },
+        isMac ? { role: 'close' } : { role: 'quit' },
+      ],
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Machine Vision Platform Documentation',
+          click: () => {
+            shell.openExternal('https://github.com');
+          },
+        },
+      ],
+    },
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -80,35 +181,71 @@ ipcMain.handle('app:get-info', () => {
 });
 
 // Controlled File Dialog Handlers (no direct unrestricted fs access in Renderer)
-ipcMain.handle('pipeline:save-file', async (_event, { defaultName, content }: { defaultName: string; content: string }) => {
-  if (!mainWindow) return { success: false, error: 'No main window' };
+ipcMain.handle(
+  'pipeline:save-file',
+  async (
+    _event,
+    {
+      defaultName,
+      content,
+      targetPath,
+    }: { defaultName?: string; content: string; targetPath?: string }
+  ) => {
+    if (!mainWindow) return { success: false, error: 'No main window' };
 
-  try {
-    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
-      title: 'Save Pipeline JSON',
-      defaultPath: defaultName || 'vision_pipeline.json',
-      filters: [{ name: 'Pipeline JSON (*.json)', extensions: ['json'] }],
-    });
+    try {
+      let finalPath = targetPath;
 
-    if (canceled || !filePath) {
-      return { success: false, canceled: true };
+      // If no targetPath provided, open the Save dialog
+      if (!finalPath) {
+        let proposedName = defaultName || 'vision_pipeline.mvp';
+        if (!path.extname(proposedName)) {
+          proposedName = `${proposedName}.mvp`;
+        }
+
+        const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+          title: 'Save Pipeline (.mvp)',
+          defaultPath: proposedName,
+          filters: [
+            { name: 'Machine Vision Pipeline (*.mvp)', extensions: ['mvp'] },
+            { name: 'Legacy Pipeline JSON (*.json)', extensions: ['json'] },
+            { name: 'All Files (*.*)', extensions: ['*'] },
+          ],
+        });
+
+        if (canceled || !filePath) {
+          return { success: false, canceled: true };
+        }
+
+        finalPath = filePath;
+      }
+
+      // Automatically append .mvp extension if user typed a name without extension
+      if (!path.extname(finalPath)) {
+        finalPath = `${finalPath}.mvp`;
+      }
+
+      await fs.writeFile(finalPath, content, 'utf-8');
+      return { success: true, filePath: finalPath };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { success: false, error: message };
     }
-
-    await fs.writeFile(filePath, content, 'utf-8');
-    return { success: true, filePath };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { success: false, error: message };
   }
-});
+);
 
 ipcMain.handle('pipeline:open-file', async () => {
   if (!mainWindow) return { success: false, error: 'No main window' };
 
   try {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
-      title: 'Open Pipeline JSON',
-      filters: [{ name: 'Pipeline JSON (*.json)', extensions: ['json'] }],
+      title: 'Open Pipeline (.mvp / .json)',
+      filters: [
+        { name: 'Machine Vision Pipeline (*.mvp; *.json)', extensions: ['mvp', 'json'] },
+        { name: 'Machine Vision Pipeline (*.mvp)', extensions: ['mvp'] },
+        { name: 'Legacy Pipeline JSON (*.json)', extensions: ['json'] },
+        { name: 'All Files (*.*)', extensions: ['*'] },
+      ],
       properties: ['openFile'],
     });
 
@@ -125,7 +262,35 @@ ipcMain.handle('pipeline:open-file', async () => {
   }
 });
 
+ipcMain.handle('dialog:select-image', async () => {
+  if (!mainWindow) return { success: false, error: 'No main window' };
+
+  try {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: 'Select Vision Inspection Image',
+      filters: [
+        { name: 'Supported Images (*.png; *.jpg; *.jpeg; *.bmp)', extensions: ['png', 'jpg', 'jpeg', 'bmp'] },
+        { name: 'PNG Images (*.png)', extensions: ['png'] },
+        { name: 'JPEG Images (*.jpg; *.jpeg)', extensions: ['jpg', 'jpeg'] },
+        { name: 'BMP Images (*.bmp)', extensions: ['bmp'] },
+        { name: 'All Files (*.*)', extensions: ['*'] },
+      ],
+      properties: ['openFile'],
+    });
+
+    if (canceled || filePaths.length === 0) {
+      return { success: false, canceled: true };
+    }
+
+    return { success: true, filePath: filePaths[0] };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { success: false, error: message };
+  }
+});
+
 app.whenReady().then(() => {
+  setupApplicationMenu();
   createWindow();
 
   app.on('activate', () => {

@@ -13,6 +13,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { usePipelineStore } from '../store/pipelineStore';
+import { useThemeStore } from '../../store/themeStore';
 import { CustomPipelineNode } from './CustomPipelineNode';
 import { validateNewConnection } from '../validator/pipelineValidator';
 import { PipelineNodeInstance, PipelineEdge } from '@/shared/contracts';
@@ -24,6 +25,8 @@ const nodeTypes = {
 const PipelineCanvasInner: React.FC = () => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
+
+  const theme = useThemeStore((state) => state.theme);
 
   const nodes = usePipelineStore((state) => state.nodes);
   const edges = usePipelineStore((state) => state.edges);
@@ -123,7 +126,7 @@ const PipelineCanvasInner: React.FC = () => {
   return (
     <div
       ref={reactFlowWrapper}
-      className="flex-1 h-full w-full bg-slate-950 relative outline-none"
+      className="flex-1 h-full w-full bg-slate-100 dark:bg-slate-950 relative outline-none transition-colors"
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onKeyDown={handleKeyDown}
@@ -144,19 +147,24 @@ const PipelineCanvasInner: React.FC = () => {
         snapGrid={[15, 15]}
         defaultEdgeOptions={{
           animated: true,
-          style: { stroke: '#06b6d4', strokeWidth: 2 },
+          style: { stroke: theme === 'dark' ? '#06b6d4' : '#0284c7', strokeWidth: 2 },
         }}
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#334155" />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={16}
+          size={1}
+          color={theme === 'dark' ? '#334155' : '#94a3b8'}
+        />
         <Controls
-          className="!bg-slate-900 !border-slate-800 !shadow-xl fill-slate-300 [&>button]:!bg-slate-900 [&>button]:!border-slate-800 [&>button]:hover:!bg-slate-800 [&>button]:!text-slate-300"
+          className="!bg-white dark:!bg-slate-900 !border-slate-300 dark:!border-slate-800 !shadow-lg fill-slate-700 dark:fill-slate-300 [&>button]:!bg-white dark:[&>button]:!bg-slate-900 [&>button]:!border-slate-200 dark:[&>button]:!border-slate-800 [&>button]:hover:!bg-slate-100 dark:[&>button]:hover:!bg-slate-800 [&>button]:!text-slate-700 dark:[&>button]:!text-slate-300"
           showInteractive={false}
         />
         <MiniMap
-          nodeColor="#0284c7"
-          maskColor="rgba(2, 6, 23, 0.75)"
-          className="!bg-slate-950/80 !border !border-slate-800 !rounded-lg"
+          nodeColor={theme === 'dark' ? '#0284c7' : '#0ea5e9'}
+          maskColor={theme === 'dark' ? 'rgba(2, 6, 23, 0.75)' : 'rgba(241, 245, 249, 0.75)'}
+          className="!bg-white/90 dark:!bg-slate-950/80 !border !border-slate-300 dark:!border-slate-800 !rounded-lg !shadow-sm"
           zoomable
           pannable
         />

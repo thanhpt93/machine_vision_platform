@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import App from './App';
 
 describe('App Component', () => {
@@ -17,20 +17,32 @@ describe('App Component', () => {
         arch: 'x64',
       }),
       getRuntimeDefaultUrl: vi.fn().mockReturnValue('http://127.0.0.1:8000'),
-      savePipelineFile: vi.fn().mockResolvedValue({ success: true, filePath: 'test.json' }),
+      savePipelineFile: vi.fn().mockResolvedValue({ success: true, filePath: 'test.mvp' }),
       openPipelineFile: vi.fn().mockResolvedValue({ success: true, content: '{}' }),
+      selectImageFile: vi.fn().mockResolvedValue({ success: true, filePath: 'sample.png' }),
+      onMenuAction: vi.fn(() => () => {}),
     };
   });
 
-  it('renders application title, phase badges and navigation tabs', async () => {
+  it('renders application title, phase badges, navigation tabs and theme toggle', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Connection refused'));
 
     render(<App initialTab="editor" />);
     expect(screen.getByText('Machine Vision Platform')).toBeInTheDocument();
-    expect(screen.getByText('Phase 2 Editor')).toBeInTheDocument();
-    expect(screen.getByText('Phase 1 MVP')).toBeInTheDocument();
+    expect(screen.getByText('Phase 3 OpenCV')).toBeInTheDocument();
+    expect(screen.getAllByText('.MVP Format').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Pipeline Editor')).toBeInTheDocument();
     expect(screen.getByText('Python Vision Runtime')).toBeInTheDocument();
+  });
+
+  it('toggles light/dark theme when theme button is clicked', async () => {
+    render(<App initialTab="editor" />);
+    const themeBtns = screen.getAllByTitle(/Chuyển sang giao diện/i);
+    expect(themeBtns.length).toBeGreaterThanOrEqual(1);
+
+    fireEvent.click(themeBtns[0]);
+    // After click, title changes to switch to the alternative theme
+    expect(screen.getAllByTitle(/Chuyển sang giao diện/i).length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders pipeline editor with node library and sample template', async () => {

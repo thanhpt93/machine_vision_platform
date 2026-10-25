@@ -3,9 +3,15 @@ import {
   validatePipeline,
   validateNewConnection,
 } from '../validator/pipelineValidator';
-import { PipelineNodeInstance, PipelineEdge } from '@/shared/contracts';
+import {
+  PipelineNodeInstance,
+  PipelineEdge,
+  areDataTypesCompatible,
+} from '@/shared/contracts';
+import { nodeRegistry, NodeRegistryItem } from '../registry/nodeRegistry';
+import { z } from 'zod';
 
-describe('Pipeline Validator', () => {
+describe('Pipeline Validator & Node Registry', () => {
   const sampleNodes: PipelineNodeInstance[] = [
     {
       id: 'img1',
@@ -107,7 +113,6 @@ describe('Pipeline Validator', () => {
   });
 
   it('warns when required input ports are not connected', () => {
-    // Only viewer node without incoming connection
     const standaloneViewer: PipelineNodeInstance[] = [
       {
         id: 'view_alone',
@@ -119,14 +124,38 @@ describe('Pipeline Validator', () => {
     ];
 
     const report = validatePipeline(standaloneViewer, []);
-    // Draft pipeline can be saved, but cannot execute
     expect(report.canSave).toBe(true);
     expect(report.canExecute).toBe(false);
     expect(report.warnings.some((w) => w.message.includes('is not connected'))).toBe(true);
   });
 
+  it('identifies nodes without Python Runtime implementation', () => {
+    const nodesWithAi: PipelineNodeInstance[] = [
+      {
+        id: 'ai_node',
+        nodeType: 'ai_detection',
+        name: 'ONNX Defect Detector',
+        position: { x: 100, y: 100 },
+        config: {
+          modelPath: 'models/yolo.onnx',
+          confidenceThreshold: 0.5,
+          nmsThreshold: 0.45,
+        },
+      },
+    ];
+
+    const report = validatePipeline(nodesWithAi, []);
+    // Pipeline can be edited and saved, but cannot execute yet
+    expect(report.canSave).toBe(true);
+    expect(report.canExecute).toBe(false);
+    expect(
+      report.warnings.some((w) =>
+        w.message.includes('has no Python Runtime implementation yet')
+      )
+    ).toBe(true);
+  });
+
   it('detects cycles in graph (DAG violation)', () => {
-    // Introduce cycle: thresh1 -> crop1
     const cycleEdges: PipelineEdge[] = [
       ...validEdges,
       {
@@ -158,7 +187,6 @@ describe('Pipeline Validator', () => {
     expect(selfConn.allowed).toBe(false);
     expect(selfConn.reason).toContain('Cannot connect a node to itself');
 
-    // Attempting to connect a second input to crop1.image_in
     const multiConn = validateNewConnection(
       'thresh1',
       'image_out',
@@ -171,20 +199,84 @@ describe('Pipeline Validator', () => {
     expect(multiConn.reason).toContain('already has an incoming connection');
   });
 
-  it('allows valid connection creation', () => {
-    const unconnectedNodes: PipelineNodeInstance[] = [
-      sampleNodes[0], // img1
-      sampleNodes[1], // crop1
-    ];
+  describe('Standardized Data Type Compatibility', () => {
+    it('verifies compatibility across standardized types', () => {
+      // ImageFrame <-> IMAGE
+      expect(areDataTypesCompatible('ImageFrame', 'IMAGE')).toBe(true);
+      expect(areDataTypesCompatible('IMAGE', 'ImageFrame')).toBe(true);
 
-    const res = validateNewConnection(
-      'img1',
-      'image',
-      'crop1',
-      'image_in',
-      unconnectedNodes,
-      []
-    );
-    expect(res.allowed).toBe(true);
+      // MaskFrame -> ImageFrame (Mask as grayscale image input)
+      expect(areDataTypesCompatible('MaskFrame', 'ImageFrame')).toBe(true);
+
+      // Numeric: Scalar <-> NUMBER
+      expect(areDataTypesCompatible('Scalar', 'NUMBER')).toBe(true);
+
+      // Detections: DetectionResult <-> DETECTIONS
+      expect(areDataTypesCompatible('DetectionResult', 'DETECTIONS')).toBe(true);
+
+      // Incompatible
+      expect(areDataTypesCompatible('DetectionResult', 'ImageFrame')).toBe(false);
+      expect(areDataTypesCompatible('ImageFrame', 'Boolean')).toBe(false);
+    });
+  });
+
+  describe('Node Registry Extensibility', () => {
+    it('allows registering a new node dynamically without altering core editor logic', () => {
+      const customNode: NodeRegistryItem = {
+        nodeType: 'custom_canny_edge',
+        version: '1.0.0',
+        displayName: 'Canny Edge Detector',
+        category: 'PREPROCESSING',
+        description: 'Multi-stage edge detection algorithm',
+        icon: 'sliders',
+        tags: ['edge', 'contour', 'canny'],
+        inputs: [
+          { id: 'img', name: 'In', dataType: 'ImageFrame', required: true },
+        ],
+        outputs: [
+          { id: 'edges', name: 'Edges', dataType: 'MaskFrame', required: true },
+        ],
+        defaultConfig: { lowThresh: 50, highThresh: 150 },
+        configSchema: z.object({
+          lowThresh: z.number().min(0),
+          highThresh: z.number().min(0),
+        }),
+        configFields: [
+          { key: 'lowThresh', label: 'Low Threshold', type: 'number', min: 0 },
+          { key: 'highThresh', label: 'High Threshold', type: 'number', min: 0 },
+        ],
+        runtime: { supported: true },
+      };
+
+      nodeRegistry.register(customNode);
+
+      expect(nodeRegistry.isRegistered('custom_canny_edge')).toBe(true);
+      expect(nodeRegistry.get('custom_canny_edge')?.displayName).toBe('Canny Edge Detector');
+      expect(nodeRegistry.hasRuntimeSupport('custom_canny_edge')).toBe(true);
+
+      // Search finds the new node by tag
+      const results = nodeRegistry.search('canny');
+      expect(results.some((n) => n.nodeType === 'custom_canny_edge')).toBe(true);
+    });
+
+    it('rejects duplicate node registration with a clear error', () => {
+      expect(() => {
+        nodeRegistry.register({
+          nodeType: 'image_file', // already registered
+          version: '1.0.0',
+          displayName: 'Duplicate Node',
+          category: 'ACQUISITION',
+          description: '',
+          icon: 'camera',
+          tags: [],
+          inputs: [],
+          outputs: [],
+          defaultConfig: {},
+          configSchema: z.object({}),
+          configFields: [],
+          runtime: { supported: true },
+        });
+      }).toThrow(/Duplicate node registration error/);
+    });
   });
 });

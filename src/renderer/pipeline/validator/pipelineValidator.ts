@@ -1,4 +1,8 @@
-import { PipelineEdge, PipelineNodeInstance } from '@/shared/contracts';
+import {
+  PipelineEdge,
+  PipelineNodeInstance,
+  areDataTypesCompatible,
+} from '@/shared/contracts';
 import { getNodeContract } from '../registry/nodeRegistry';
 
 export interface ValidationError {
@@ -61,7 +65,9 @@ export function validatePipeline(
   const nodeMap = new Map<string, PipelineNodeInstance>();
   nodes.forEach((n) => nodeMap.set(n.id, n));
 
-  // 2. Validate Node Contracts & Configs
+  // 2. Validate Node Contracts & Configs & Runtime Status
+  let hasUnsupportedRuntimeNode = false;
+
   for (const node of nodes) {
     const contract = getNodeContract(node.nodeType);
     if (!contract) {
@@ -72,6 +78,17 @@ export function validatePipeline(
         severity: 'error',
       });
       continue;
+    }
+
+    // Check runtime implementation support
+    if (contract.runtime && !contract.runtime.supported) {
+      hasUnsupportedRuntimeNode = true;
+      warnings.push({
+        type: 'NODE_ERROR',
+        nodeId: node.id,
+        message: `Node "${node.name}" (${node.nodeType}) has no Python Runtime implementation yet`,
+        severity: 'warning',
+      });
     }
 
     // Validate config against Zod schema
@@ -164,8 +181,8 @@ export function validatePipeline(
       continue;
     }
 
-    // Check data type compatibility
-    if (sourcePort.dataType !== targetPort.dataType) {
+    // Check data type compatibility via areDataTypesCompatible
+    if (!areDataTypesCompatible(sourcePort.dataType, targetPort.dataType)) {
       errors.push({
         type: 'EDGE_ERROR',
         edgeId: edge.id,
@@ -287,6 +304,7 @@ export function validatePipeline(
     errors.length === 0 &&
     !hasMissingRequiredInputs &&
     !hasCycle &&
+    !hasUnsupportedRuntimeNode &&
     topologicalOrder !== undefined;
 
   return {
@@ -333,7 +351,7 @@ export function validateNewConnection(
     return { allowed: false, reason: 'Invalid port reference.' };
   }
 
-  if (sourcePort.dataType !== targetPort.dataType) {
+  if (!areDataTypesCompatible(sourcePort.dataType, targetPort.dataType)) {
     return {
       allowed: false,
       reason: `Type mismatch: cannot connect ${sourcePort.dataType} output to ${targetPort.dataType} input.`,
