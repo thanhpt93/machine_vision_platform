@@ -14,12 +14,16 @@ import {
 } from 'lucide-react';
 import { ProductionNavPage, useProductionStore } from '../store/productionStore';
 import { useThemeStore } from '../../store/themeStore';
+import { useLicenseStore } from '../../store/licenseStore';
 import { ProductionDashboard } from '../pages/ProductionDashboard';
 import { InspectionPage } from '../pages/InspectionPage';
 import { InspectionHistoryPage } from '../pages/InspectionHistoryPage';
 import { ReleasedPipelinePage } from '../pages/ReleasedPipelinePage';
 import { SystemStatusPage } from '../pages/SystemStatusPage';
 import { ProductionSettingsPage } from '../pages/ProductionSettingsPage';
+import { LicenseStatusBadge } from '../../license/LicenseStatusBadge';
+import { LicenseActivationModal } from '../../license/LicenseActivationModal';
+import { LicenseDetailsModal } from '../../license/LicenseDetailsModal';
 
 interface ProductionLayoutProps {
   onSwitchToDeveloperMode?: () => void;
@@ -89,20 +93,35 @@ export const ProductionLayout: React.FC<ProductionLayoutProps> = ({
   const selectedReleaseKey = useProductionStore((s) => s.selectedReleaseKey);
   const isRunningInspection = useProductionStore((s) => s.isRunningInspection);
 
-  // Initial data load and periodic health heartbeat when Production Mode is mounted
+  const refreshLicenseStatus = useLicenseStore((s) => s.refreshLicenseStatus);
+  const openActivationModal = useLicenseStore((s) => s.openActivationModal);
+
+  // Initial data load and periodic health & license heartbeat when Production Mode is mounted
   useEffect(() => {
     refreshHealth();
     fetchReleases();
     fetchInspectionsHistory();
+    refreshLicenseStatus();
 
     const timer = window.setInterval(() => {
       refreshHealth();
+      refreshLicenseStatus();
     }, 10000);
+
+    let unsubscribeMenu: (() => void) | undefined;
+    if (typeof window !== 'undefined' && window.electronAPI?.onMenuAction) {
+      unsubscribeMenu = window.electronAPI.onMenuAction((action: string) => {
+        if (action === 'import-license') {
+          openActivationModal();
+        }
+      });
+    }
 
     return () => {
       window.clearInterval(timer);
+      if (unsubscribeMenu) unsubscribeMenu();
     };
-  }, [refreshHealth, fetchReleases, fetchInspectionsHistory]);
+  }, [refreshHealth, fetchReleases, fetchInspectionsHistory, refreshLicenseStatus, openActivationModal]);
 
   const isRuntimeConnected = Boolean(healthResult?.data && !healthResult?.error);
   const selectedSummary = eligibleReleases.find(
@@ -245,6 +264,9 @@ export const ProductionLayout: React.FC<ProductionLayoutProps> = ({
               </span>
             )}
 
+            {/* License Status Badge */}
+            <LicenseStatusBadge />
+
             {/* Quick Light / Dark Theme Toggle in Production Workstation Top Bar */}
             <button
               type="button"
@@ -288,6 +310,10 @@ export const ProductionLayout: React.FC<ProductionLayoutProps> = ({
           {activePage === 'settings' && <ProductionSettingsPage />}
         </div>
       </div>
+
+      {/* Global Modals for License Management */}
+      <LicenseActivationModal />
+      <LicenseDetailsModal />
     </div>
   );
 };

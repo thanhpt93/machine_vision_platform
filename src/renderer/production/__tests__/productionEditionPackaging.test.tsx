@@ -40,6 +40,11 @@ describe('Phase 3: Production Edition Packaging & Capability Restrictions', () =
         success: true,
         filePath: 'C:/project/machine_vision_platform/sample_images/bottle_cap.png',
       }),
+      selectLicenseFile: vi.fn().mockResolvedValue({
+        success: true,
+        filePath: 'license.novalic.json',
+        content: '{}',
+      }),
       onMenuAction: vi.fn(() => () => {}),
     };
 

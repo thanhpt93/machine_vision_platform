@@ -6,6 +6,12 @@ import {
   ProductionReleaseDetails,
   ProductionReleaseSummary,
 } from '../types/api';
+import {
+  LicenseDetailsResponse,
+  LicenseImportResponse,
+  LicenseStatusResponse,
+  LicenseValidateResponse,
+} from '../license/types';
 
 const DEFAULT_RUNTIME_URL = 'http://127.0.0.1:8000';
 
@@ -77,6 +83,74 @@ export class RuntimeApiService {
         checkedAt,
       };
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Licensing APIs (Shared between Developer & Production Editions)
+  // ---------------------------------------------------------------------------
+
+  public async getLicenseStatus(): Promise<LicenseStatusResponse> {
+    const response = await fetch(`${this.baseUrl}/api/license/status`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+      const detail = await this.extractErrorMessage(response);
+      throw new Error(detail);
+    }
+
+    return response.json();
+  }
+
+  public async getLicenseDetails(): Promise<LicenseDetailsResponse> {
+    const response = await fetch(`${this.baseUrl}/api/license/details`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+      const detail = await this.extractErrorMessage(response);
+      throw new Error(detail);
+    }
+
+    return response.json();
+  }
+
+  public async importLicense(payload: {
+    artifact?: any;
+    artifact_text?: string;
+  }): Promise<LicenseImportResponse> {
+    const response = await fetch(`${this.baseUrl}/api/license/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const detail = await this.extractErrorMessage(response);
+      throw new Error(detail);
+    }
+
+    return response.json();
+  }
+
+  public async validateLicense(payload: {
+    artifact?: any;
+    artifact_text?: string;
+  }): Promise<LicenseValidateResponse> {
+    const response = await fetch(`${this.baseUrl}/api/license/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const detail = await this.extractErrorMessage(response);
+      throw new Error(detail);
+    }
+
+    return response.json();
   }
 
   // ---------------------------------------------------------------------------
@@ -284,8 +358,14 @@ export class RuntimeApiService {
       if (body && typeof body.detail === 'string') {
         return body.detail;
       }
+      if (body && body.detail && typeof body.detail.message === 'string') {
+        return body.detail.message;
+      }
       if (body && typeof body.error === 'string') {
         return body.error;
+      }
+      if (body && typeof body.message === 'string') {
+        return body.message;
       }
     } catch {
       // Fallback to text or statusText

@@ -20,6 +20,7 @@ describe('App Component', () => {
       savePipelineFile: vi.fn().mockResolvedValue({ success: true, filePath: 'test.mvp' }),
       openPipelineFile: vi.fn().mockResolvedValue({ success: true, content: '{}' }),
       selectImageFile: vi.fn().mockResolvedValue({ success: true, filePath: 'sample.png' }),
+      selectLicenseFile: vi.fn().mockResolvedValue({ success: true, filePath: 'test.novalic.json', content: '{}' }),
       onMenuAction: vi.fn(() => () => {}),
     };
   });

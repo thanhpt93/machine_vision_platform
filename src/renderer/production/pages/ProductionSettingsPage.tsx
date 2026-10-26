@@ -11,6 +11,7 @@ import { useProductionStore } from '../store/productionStore';
 import { useThemeStore } from '../../store/themeStore';
 import { AppInfo } from '../../../main/preload';
 import { runtimeApi } from '../../services/runtimeApi';
+import { LicenseSettingsCard } from '../../license/LicenseSettingsCard';
 
 export const ProductionSettingsPage: React.FC = () => {
   const preferences = useProductionStore((s) => s.preferences);
@@ -43,8 +44,7 @@ export const ProductionSettingsPage: React.FC = () => {
           <span>Workstation Settings</span>
         </h2>
         <p className="text-xs text-slate-600 dark:text-slate-400">
-          Configure workstation display theme, image inspection viewer defaults, and local UI
-          preferences.
+          Configure workstation display theme, image inspection viewer defaults, and licensing.
         </p>
       </div>
 
@@ -159,7 +159,12 @@ export const ProductionSettingsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 3: Application & Runtime Version Info */}
+        {/* Card 3: Software License & Entitlements */}
+        <div className="lg:col-span-2">
+          <LicenseSettingsCard />
+        </div>
+
+        {/* Card 4: Application & Runtime Version Info */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 shadow-xs space-y-3">
           <div className="flex items-center space-x-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />

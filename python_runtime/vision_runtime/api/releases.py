@@ -11,6 +11,7 @@ from vision_runtime.models.release import (
     SaveDraftRequest,
 )
 from vision_runtime.services.release_manager import release_manager
+from vision_runtime.services.license_service import license_service
 
 router = APIRouter(prefix="/api/releases", tags=["releases"])
 
@@ -75,9 +76,11 @@ async def mark_pipeline_validated(req: MarkValidatedRequest) -> Dict[str, Any]:
 async def create_release(req: CreateReleaseRequest) -> Dict[str, Any]:
     """
     Creates an immutable ReleaseSnapshot from a validated pipeline.
+    Protected operation: requires an active and valid Developer Edition license.
     Rejects unvalidated/invalid pipelines and duplicate release versions.
     """
     _ensure_developer_edition_for_mutation()
+    license_service.require_valid_license("create_release")
     try:
         snapshot = release_manager.create_release(
             release_version=req.release_version,

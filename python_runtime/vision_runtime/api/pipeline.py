@@ -9,6 +9,7 @@ from vision_runtime.engine.executor import pipeline_executor
 from vision_runtime.engine.buffer import execution_buffer
 from vision_runtime.engine.validator import validate_pipeline_definition
 from vision_runtime.registry import runtime_registry
+from vision_runtime.services.license_service import license_service
 
 router = APIRouter(prefix="/api/pipeline", tags=["pipeline"])
 
@@ -40,7 +41,7 @@ async def validate_pipeline(req: ValidatePipelineRequest) -> Dict[str, Any]:
     Validates DAG structure, node availability, port compatibility, config safety,
     and produces a topological execution plan.
     Preserves backward-compatible fields (`valid`, `total_nodes`, `execution_plan`,
-    `unsupported_nodes`, `error`) while adding structured Phase 2 `errors` and `can_release`.
+    `unsupported_nodes`, `error`) while adding structured Phase 2 `errors` and `can_release``.
     """
     nodes = req.pipeline.get("nodes", [])
     edges = req.pipeline.get("edges", [])
@@ -93,8 +94,12 @@ async def validate_pipeline(req: ValidatePipelineRequest) -> Dict[str, Any]:
 async def execute_pipeline(req: ExecutePipelineRequest) -> Dict[str, Any]:
     """
     Executes vision pipeline using OpenCV handlers.
+    Protected operation: requires an active and valid Developer Edition license.
     Returns execution status, per-node metrics, errors and preview references.
     """
+    # Enforce license policy check
+    license_service.require_valid_license("execute_pipeline")
+
     # Use workspace dir if specified or resolve from environment/cwd
     workspace = req.workspace_dir or os.getcwd()
     executor = pipeline_executor

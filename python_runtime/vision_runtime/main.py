@@ -4,6 +4,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from vision_runtime.api.health import router as health_router
+from vision_runtime.api.license import router as license_router
 from vision_runtime.api.pipeline import router as pipeline_router
 from vision_runtime.api.production import router as production_router
 from vision_runtime.api.releases import router as releases_router
@@ -30,6 +31,7 @@ app.add_middleware(
 )
 
 app.include_router(health_router)
+app.include_router(license_router)
 app.include_router(production_router)
 app.include_router(releases_router)
 
@@ -46,6 +48,7 @@ async def root():
         "deployment_mode": "production" if _IS_PRODUCTION_EDITION else "developer",
         "docs": None if _IS_PRODUCTION_EDITION else "/docs",
         "health": "/health",
+        "license_api": "/api/license",
         "pipeline_api": None if _IS_PRODUCTION_EDITION else "/api/pipeline",
         "releases_api": "/api/releases",
         "production_api": "/api/production",

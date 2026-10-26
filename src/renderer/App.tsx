@@ -15,7 +15,11 @@ import { PipelineEditor } from './pipeline/components/PipelineEditor';
 import { ProductionLayout } from './production/components/ProductionLayout';
 import { AppInfo } from '../main/preload';
 import { useThemeStore } from './store/themeStore';
+import { useLicenseStore } from './store/licenseStore';
 import { DeploymentMode, isProductionEdition } from '../shared/editionConfig';
+import { LicenseStatusBadge } from './license/LicenseStatusBadge';
+import { LicenseActivationModal } from './license/LicenseActivationModal';
+import { LicenseDetailsModal } from './license/LicenseDetailsModal';
 
 interface AppProps {
   initialTab?: 'editor' | 'diagnostics' | 'production';
@@ -37,6 +41,10 @@ export const App: React.FC<AppProps> = ({
   const theme = useThemeStore((state) => state.theme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
 
+  // License Management
+  const refreshLicenseStatus = useLicenseStore((state) => state.refreshLicenseStatus);
+  const openActivationModal = useLicenseStore((state) => state.openActivationModal);
+
   useEffect(() => {
     if (typeof window !== 'undefined' && window.electronAPI?.getAppInfo) {
       const infoPromise = window.electronAPI.getAppInfo();
@@ -44,7 +52,22 @@ export const App: React.FC<AppProps> = ({
         infoPromise.then(setAppInfo).catch(() => {});
       }
     }
-  }, []);
+
+    refreshLicenseStatus();
+
+    let unsubscribeMenu: (() => void) | undefined;
+    if (typeof window !== 'undefined' && window.electronAPI?.onMenuAction) {
+      unsubscribeMenu = window.electronAPI.onMenuAction((action: string) => {
+        if (action === 'import-license') {
+          openActivationModal();
+        }
+      });
+    }
+
+    return () => {
+      if (unsubscribeMenu) unsubscribeMenu();
+    };
+  }, [refreshLicenseStatus, openActivationModal]);
 
   // ==========================================================================
   // PRODUCTION EDITION SHELL
@@ -138,6 +161,9 @@ export const App: React.FC<AppProps> = ({
 
         {/* Right Section: Badges & Theme Toggle */}
         <div className="flex items-center space-x-3 text-xs">
+          {/* License Status Badge */}
+          <LicenseStatusBadge />
+
           {/* Theme Toggle Button (Light/Dark Mode) */}
           <button
             type="button"
@@ -170,7 +196,7 @@ export const App: React.FC<AppProps> = ({
             <Cpu className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
             <span>Arch: {appInfo?.arch ?? 'x64'}</span>
           </div>
-          <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 text-[11px]">
+          <div className="hidden lg:flex items-center space-x-1.5 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 text-[11px]">
             <Shield className="w-3 h-3 text-purple-600 dark:text-purple-400" />
             <span>Sandbox: Active</span>
           </div>
@@ -212,6 +238,10 @@ export const App: React.FC<AppProps> = ({
           </div>
         )}
       </main>
+
+      {/* Global Modals for License Management */}
+      <LicenseActivationModal />
+      <LicenseDetailsModal />
     </div>
   );
 };

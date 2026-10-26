@@ -245,6 +245,7 @@ describe('Pipeline Editor UI Panels', () => {
         savePipelineFile: vi.fn().mockResolvedValue({ success: true, filePath: 'test.mvp' }),
         openPipelineFile: vi.fn().mockResolvedValue({ success: true, content: '{}' }),
         selectImageFile: vi.fn().mockResolvedValue({ canceled: true }),
+        selectLicenseFile: vi.fn().mockResolvedValue({ canceled: true }),
         onMenuAction: vi.fn((cb) => {
           actionHandler = cb;
           return () => {};
@@ -269,6 +270,7 @@ describe('Pipeline Editor UI Panels', () => {
         savePipelineFile: vi.fn(),
         openPipelineFile: vi.fn(),
         selectImageFile: vi.fn(),
+        selectLicenseFile: vi.fn().mockResolvedValue({ canceled: true }),
         onMenuAction: vi.fn(() => () => {}),
       };
 

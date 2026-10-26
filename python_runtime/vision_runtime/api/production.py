@@ -24,6 +24,7 @@ from vision_runtime.services.inspection_service import (
     validate_and_inspect_image_file,
 )
 from vision_runtime.services.release_manager import release_manager
+from vision_runtime.services.license_service import license_service
 
 router = APIRouter(prefix="/api/production", tags=["production"])
 
@@ -177,11 +178,15 @@ async def get_input_image_preview(
 async def start_production_inspection(req: StartInspectionRequest) -> Dict[str, Any]:
     """
     Starts a production inspection:
+    - Protected operation: requires an active and valid Production Edition license
     - Verifies the selected/active release exists, is not Archived, and passes SHA-256 checksum verification
     - Validates the input image path, existence, format, size, and pixel dimensions
     - Enforces bounded single-active-inspection concurrency
     - Executes using the existing DAG pipeline_executor and records execution_status + inspection_outcome
     """
+    # Enforce license check for Production inspection
+    license_service.require_valid_license("production_inspection")
+
     try:
         record = inspection_service.start_inspection(
             pipeline_id=req.pipeline_id,

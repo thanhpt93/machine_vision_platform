@@ -41,6 +41,14 @@ export interface SelectImageResult {
   error?: string;
 }
 
+export interface SelectLicenseResult {
+  success: boolean;
+  filePath?: string;
+  content?: string;
+  canceled?: boolean;
+  error?: string;
+}
+
 export interface ElectronAPI {
   getAppInfo: () => Promise<AppInfo>;
   getDeploymentMode?: () => DeploymentMode;
@@ -54,6 +62,7 @@ export interface ElectronAPI {
   ) => Promise<FileSaveResult>;
   openPipelineFile: () => Promise<FileOpenResult>;
   selectImageFile: () => Promise<SelectImageResult>;
+  selectLicenseFile: () => Promise<SelectLicenseResult>;
   onMenuAction: (callback: (action: string) => void) => () => void;
 }
 
@@ -84,6 +93,7 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('pipeline:save-file', { defaultName, content, targetPath }),
   openPipelineFile: () => ipcRenderer.invoke('pipeline:open-file'),
   selectImageFile: () => ipcRenderer.invoke('dialog:select-image'),
+  selectLicenseFile: () => ipcRenderer.invoke('dialog:select-license'),
   onMenuAction: (callback: (action: string) => void) => {
     const handler = (_event: unknown, action: string) => callback(action);
     ipcRenderer.on('menu:action', handler);

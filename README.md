@@ -186,9 +186,40 @@ Hệ thống triển khai đầy đủ 9 nhóm chức năng xử lý ảnh truy�
 | `GET` | `/api/production/inspections/{inspection_id}/nodes/{node_id}/preview` | Truy xuất ảnh JPEG preview gắn riêng với `inspection_id` và `node_id` |
 | `POST` | `/api/production/inspections/{inspection_id}/cancel` | Yêu cầu hủy lượt kiểm tra hoặc trả về trạng thái kết thúc rõ ràng (`409 Conflict` nếu đã hoàn tất) |
 
+### 3.4. License Verification & Management API (`/api/license`)
+| Phương thức | Đường dẫn | Chức năng |
+| :--- | :--- | :--- |
+| `GET` | `/api/license/status` | Truy vấn trạng thái bản quyền hiện tại (`NOT_ACTIVATED`, `VALID`, `EXPIRED`, `EDITION_MISMATCH`, `INVALID_SIGNATURE`, `INVALID_PRODUCT`) và thông tin tóm tắt |
+| `POST` | `/api/license/import` | Nhập file giấy phép số (`.novalic.json`), xác minh chữ ký Ed25519 bằng Public Key chuẩn, kiểm tra phiên bản và lưu trữ an toàn |
+| `POST` | `/api/license/validate` | Kiểm tra tính hợp lệ của license artifact mà không lưu đè lên active license |
+| `GET` | `/api/license/details` | Truy xuất toàn bộ thông tin chi tiết: Customer, ID, Edition, Features, Giới hạn phần cứng, Expiration, Key ID và thuật toán ký |
+
 ---
 
-## 4. Đóng gói & Cài đặt trên Windows (Developer Edition vs Production Edition)
+## 4. Cơ chế Ký số & Kích hoạt Bản quyền (NOVA Digital License Management)
+
+Nền tảng tích hợp chặt chẽ với hệ thống **NOVA License Management** (`license_platform`) thông qua cơ chế phong bì chữ ký số Ed25519 độc lập (không cần kết nối Internet khi kích hoạt):
+
+1. **Chuẩn phong bì & Định dạng Chữ ký:**
+   - Định dạng: `NOVA-LICENSE-ENVELOPE-V1`.
+   - Thuật toán ký số: **Ed25519** (RFC 8032) với khóa công khai chuẩn (`nova-key-2026-01`).
+   - Chuẩn hóa Payload: **RFC 8785 (JCS)** đảm bảo tính toàn vẹn tuyệt đối của dữ liệu JSON dạng canonical byte UTF-8 (Unicode NFC, sắp xếp khóa từ điển, không có khoảng trắng thừa).
+   - Chỉ lưu trữ Public Key trên máy trạm (tuyệt đối không nhúng Private Key vào máy khách).
+2. **Quy trình Kích hoạt (Activation Workflow):**
+   - Quản trị viên cấp phép và xuất file `.novalic.json` từ hệ thống `license_platform`.
+   - Người vận hành trên máy trạm mở NOVA Machine Vision Platform (Developer Edition hoặc Production Edition).
+   - Nhấn vào badge bản quyền hoặc vào trang **Settings > Software License & Activation** và chọn **Import & Activate License...**.
+   - Hộp thoại hệ thống Electron Native mở ra để người dùng chọn file `.novalic.json`.
+   - Python Vision Runtime xác minh chữ ký số Ed25519, đối chiếu `product_id` (`NOVA-MV-DEV` hoặc `NOVA-MV-PROD`), kiểm tra `edition` (`developer` hoặc `production`), và kiểm tra thời hạn hiệu lực.
+   - Khi hợp lệ, license được ghi nguyên tử (`active_license.novalic.json`) và kích hoạt ngay lập tức mà không cần khởi động lại ứng dụng.
+3. **Bảo vệ Vận hành (Backend Enforcement Guards):**
+   - `POST /api/pipeline/execute`: Yêu cầu giấy phép Developer Edition hợp lệ.
+   - `POST /api/releases`: Yêu cầu giấy phép Developer Edition hợp lệ để phát hành pipeline.
+   - `POST /api/production/inspections`: Yêu cầu giấy phép Production Edition hợp lệ để thực thi kiểm tra công nghiệp.
+
+---
+
+## 5. Đóng gói & Cài đặt trên Windows (Developer Edition vs Production Edition)
 
 Dự án hỗ trợ đóng gói hai phiên bản độc lập cho Windows 10/11 (x64) từ cùng một codebase bằng `electron-builder`:
 
@@ -223,22 +254,22 @@ npm run dist:production
 
 ---
 
-## 5. Kiểm thử tự động (100% Pass Rate)
+## 6. Kiểm thử tự động (100% Pass Rate)
 
-Hệ thống được kiểm thử tự động toàn diện từ unit test từng handler, quản lý phát hành (Phase 2), thực thi Production (Phase 3), giao diện Production Mode UI, phân tách quyền hạn đóng gói Production Edition đến kiểm thử tích hợp toàn bộ luồng đồ thị DAG trên cả Frontend và Backend:
+Hệ thống được kiểm thử tự động toàn diện từ unit test từng handler, quản lý phát hành (Phase 2), thực thi Production (Phase 3), giao diện Production Mode UI, phân tách quyền hạn đóng gói Production Edition, cơ chế nhập và xác minh chữ ký số bản quyền Ed25519 đến kiểm thử tích hợp toàn bộ luồng đồ thị DAG trên cả Frontend và Backend:
 
 ```powershell
-# 1. Kiểm thử Frontend (57 tests Vitest) + TypeScript strict check
+# 1. Kiểm thử Frontend (70 tests Vitest) + TypeScript strict check
 npm run typecheck
 npm test -- --run
 
-# 2. Kiểm thử Python Runtime trên môi trường Conda `api` (58 tests Pytest)
+# 2. Kiểm thử Python Runtime trên môi trường Conda `api` (75 tests Pytest)
 C:\Users\admin\miniconda3\envs\api\python.exe -m pytest python_runtime/tests/ -v
 ```
 
 ---
 
-## 6. Bảng tổng hợp trạng thái nghiệm thu
+## 7. Bảng tổng hợp trạng thái nghiệm thu
 
 | Hạng mục kiểm tra | Trạng thái | Chi tiết triển khai |
 | :--- | :---: | :--- |
@@ -249,4 +280,5 @@ C:\Users\admin\miniconda3\envs\api\python.exe -m pytest python_runtime/tests/ -v
 | **Phase 3 — Production Execution API** | Hoàn thành | Vòng đời `QUEUED → RUNNING → COMPLETED / FAILED / CANCELLED`, tách biệt `execution_status` và `inspection_outcome` (`OK`, `NG`, `UNKNOWN`), khóa đồng thời an toàn |
 | **Production Mode UI (NOVA Workstation)** | Hoàn thành | 6 trang chức năng (`Dashboard`, `Inspection`, `History`, `Pipeline Management Read-Only`, `System Status`, `Settings`), chuyển đổi `Developer Mode` / `Production Mode`, phát hành trực tiếp từ Editor |
 | **Production Edition Packaging (Windows NSIS)** | Hoàn thành | Bộ cài đặt riêng biệt `NOVA-Machine-Vision-Production-Setup-0.1.0.exe` và `NOVA-Machine-Vision-Developer-Setup-0.1.0.exe`, tự động quản lý vòng đời Python Runtime và phân tách `%APPDATA%` |
-| **Kiểm thử tự động** | Hoàn thành | **57/57 Vitest tests** + **58/58 Pytest tests** vượt qua 100%, 0 lỗi TypeScript strict |
+| **Digital License Import & Verification** | Hoàn thành | Chuẩn phong bì `NOVA-LICENSE-ENVELOPE-V1`, xác minh Ed25519 theo chuẩn RFC 8785 JCS, phân biệt Developer (`NOVA-MV-DEV`) và Production (`NOVA-MV-PROD`), bảo vệ backend operation guard, UI Modal & Badge trực quan |
+| **Kiểm thử tự động** | Hoàn thành | **70/70 Vitest tests** + **75/75 Pytest tests** vượt qua 100%, 0 lỗi TypeScript strict |

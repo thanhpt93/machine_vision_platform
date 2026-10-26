@@ -52,6 +52,12 @@ function setupApplicationMenu(): void {
               mainWindow?.webContents.send('menu:action', 'select-image');
             },
           },
+          {
+            label: 'Import License File...',
+            click: () => {
+              mainWindow?.webContents.send('menu:action', 'import-license');
+            },
+          },
           { type: 'separator' },
           isMac ? { role: 'close' } : { role: 'quit' },
         ],
@@ -134,6 +140,13 @@ function setupApplicationMenu(): void {
           accelerator: 'CmdOrCtrl+Shift+S',
           click: () => {
             mainWindow?.webContents.send('menu:action', 'save-as');
+          },
+        },
+        { type: 'separator' },
+        {
+          label: 'Import License File...',
+          click: () => {
+            mainWindow?.webContents.send('menu:action', 'import-license');
           },
         },
         { type: 'separator' },
@@ -395,6 +408,46 @@ ipcMain.handle('dialog:select-image', async () => {
     }
 
     return { success: true, filePath: filePaths[0] };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { success: false, error: message };
+  }
+});
+
+// Production & Developer Shared License Selection Dialog Handler
+ipcMain.handle('dialog:select-license', async () => {
+  if (!mainWindow) return { success: false, error: 'No main window' };
+
+  try {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: 'Import NOVA License Artifact',
+      filters: [
+        {
+          name: 'NOVA License Artifacts (*.novalic.json; *.lic; *.json)',
+          extensions: ['json', 'lic'],
+        },
+        { name: 'NOVA Signed License (*.novalic.json)', extensions: ['json'] },
+        { name: 'Standard License (*.lic)', extensions: ['lic'] },
+        { name: 'All Files (*.*)', extensions: ['*'] },
+      ],
+      properties: ['openFile'],
+    });
+
+    if (canceled || filePaths.length === 0) {
+      return { success: false, canceled: true };
+    }
+
+    const filePath = filePaths[0];
+    const stat = await fs.stat(filePath);
+    if (stat.size > 1024 * 1024) {
+      return {
+        success: false,
+        error: 'License file exceeds maximum allowed size of 1 MB.',
+      };
+    }
+
+    const content = await fs.readFile(filePath, 'utf-8');
+    return { success: true, filePath, content };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return { success: false, error: message };
