@@ -162,7 +162,7 @@ export const InspectionPage: React.FC<InspectionPageProps> = ({
 
   return (
     <div
-      className="h-full flex flex-col gap-4 overflow-y-auto p-4 lg:p-5"
+      className="h-full flex flex-col gap-3 overflow-y-auto p-3 lg:p-4"
       data-testid="inspection-workstation-page"
     >
       {/* Hidden fallback file input */}
@@ -202,11 +202,11 @@ export const InspectionPage: React.FC<InspectionPageProps> = ({
       )}
 
       {/* Main 12-Column Workstation Grid */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0">
         {/* LEFT COLUMN (4 cols): Pipeline Selection, Image Selection & Run Controls */}
-        <div className="lg:col-span-4 flex flex-col gap-4 overflow-y-auto pr-0.5">
+        <div className="lg:col-span-3 xl:col-span-3 2xl:col-span-3 flex flex-col gap-3 overflow-y-auto pr-0.5">
           {/* A. Pipeline Selection Card */}
-          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-3">
+          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-xs space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <GitBranch className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -270,7 +270,7 @@ export const InspectionPage: React.FC<InspectionPageProps> = ({
                     value={pipelineSearch}
                     onChange={(e) => setPipelineSearch(e.target.value)}
                     placeholder="Search released pipeline by name or version..."
-                    className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500"
+                    className="w-full pl-7 pr-2.5 py-1 rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
@@ -292,7 +292,7 @@ export const InspectionPage: React.FC<InspectionPageProps> = ({
                         selectRelease(parsed.pipelineId, parsed.releaseVersion);
                       }
                     }}
-                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500"
                   >
                     {filteredReleases.map((r) => {
                       const key = makeReleaseKey(r.pipeline_id, r.release_version);
@@ -356,7 +356,7 @@ export const InspectionPage: React.FC<InspectionPageProps> = ({
           </section>
 
           {/* B. Input Image Selection Card */}
-          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-3">
+          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-xs space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <FileImage className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -383,7 +383,7 @@ export const InspectionPage: React.FC<InspectionPageProps> = ({
                 type="button"
                 onClick={handleBrowseImageDialog}
                 disabled={isRunningInspection}
-                className="flex-1 inline-flex items-center justify-center space-x-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white text-xs font-semibold shadow-xs transition-colors"
+                className="flex-1 inline-flex items-center justify-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white text-xs font-semibold shadow-xs transition-colors"
               >
                 <FolderOpen className="w-4 h-4" />
                 <span>{selectedImagePath ? 'Replace Image File...' : 'Select Image File...'}</span>
@@ -455,7 +455,7 @@ export const InspectionPage: React.FC<InspectionPageProps> = ({
           </section>
 
           {/* C. Inspection Execution Controls Card */}
-          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-3">
+          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-xs space-y-2">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
               3. Inspection Controls
             </h3>
@@ -532,7 +532,7 @@ export const InspectionPage: React.FC<InspectionPageProps> = ({
         </div>
 
         {/* CENTER COLUMN (5 cols): Dedicated Workstation Image Viewer */}
-        <div className="lg:col-span-5 flex flex-col min-h-[380px]">
+        <div className="lg:col-span-6 xl:col-span-6 2xl:col-span-7 flex flex-col min-h-[400px]">
           <ProductionImageViewer
             selectedImagePath={selectedImagePath}
             selectedImageMeta={selectedImageMeta}
@@ -541,7 +541,7 @@ export const InspectionPage: React.FC<InspectionPageProps> = ({
         </div>
 
         {/* RIGHT COLUMN (3 cols): Inspection Result & Metrology Breakdown */}
-        <div className="lg:col-span-3 overflow-y-auto pr-0.5">
+        <div className="lg:col-span-3 xl:col-span-3 2xl:col-span-2 overflow-y-auto pr-0.5">
           <InspectionResultPanel
             record={currentInspection}
             pipelineName={selectedReleaseSummary?.pipeline_name}

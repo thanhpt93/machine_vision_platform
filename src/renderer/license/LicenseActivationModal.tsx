@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { useLicenseStore } from '../store/licenseStore';
+import { resolveDeploymentMode } from '../../shared/editionConfig';
 
 export const LicenseActivationModal: React.FC = () => {
   const showActivationModal = useLicenseStore((s) => s.showActivationModal);
@@ -25,8 +26,10 @@ export const LicenseActivationModal: React.FC = () => {
 
   if (!showActivationModal) return null;
 
+  const desktopEdition = resolveDeploymentMode();
   const runningEdition = licenseStatus?.running_edition || 'developer';
   const hasValidLicense = licenseStatus?.is_valid === true;
+  const isEditionMismatch = desktopEdition === 'production' && runningEdition === 'developer';
 
   const handleSelectAndImport = async () => {
     setError(null);
@@ -98,6 +101,19 @@ export const LicenseActivationModal: React.FC = () => {
 
         {/* Modal Body */}
         <div className="p-5 space-y-4 text-xs">
+          {/* Mismatch Warning between Electron and External Python Process */}
+          {isEditionMismatch && (
+            <div className="p-3.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 space-y-1.5 shadow-xs">
+              <div className="font-semibold flex items-center space-x-1.5 text-xs text-amber-900 dark:text-amber-100">
+                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>Cảnh báo: Cổng 8000 đang chạy Python Runtime Developer</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
+                Ứng dụng Desktop đang ở chế độ <strong>Production Edition</strong>, nhưng tiến trình Python Vision Runtime tại cổng 8000 đang chạy ở chế độ <strong>Developer</strong> (do cổng 8000 bị chiếm dụng bởi tiến trình chạy ngoài terminal trước đó). Hãy tắt terminal Python cũ để Production Edition tự động khởi chạy runtime Production tương thích.
+              </p>
+            </div>
+          )}
+
           {/* Success Banner */}
           {successMessage && (
             <div
@@ -189,7 +205,7 @@ export const LicenseActivationModal: React.FC = () => {
                     {isActivating ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Verifying & Persisting...</span>
+                        <span>Verifying & Importing...</span>
                       </>
                     ) : (
                       <>
@@ -211,7 +227,7 @@ export const LicenseActivationModal: React.FC = () => {
             onClick={handleClose}
             className="px-4 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold transition-colors text-xs"
           >
-            {successMessage ? 'Done' : 'Close'}
+            Close
           </button>
         </div>
       </div>

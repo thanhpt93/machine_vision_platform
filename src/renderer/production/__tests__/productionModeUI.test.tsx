@@ -426,4 +426,50 @@ describe('NOVA Production Mode UI', () => {
       expect(screen.getByText('Workstation Theme')).toBeInTheDocument();
     });
   });
+
+  it('6. supports mouse wheel zooming, reset to fit, and pan drag in ProductionImageViewer', async () => {
+    render(<App initialTab="production" />);
+
+    // Select sample image
+    fireEvent.click(screen.getByText('Bottle Cap Sample'));
+    await waitFor(() => {
+      expect(screen.getByAltText(/bottle_cap/i)).toBeInTheDocument();
+    });
+
+    // Initially zoom indicator shows FIT
+    expect(screen.getByTitle('Current zoom level')).toHaveTextContent('FIT');
+
+    // Find image viewport container
+    const imgEl = screen.getByAltText(/bottle_cap/i);
+    const viewportContainer = imgEl.closest('[class*="select-none"]') as HTMLElement;
+    expect(viewportContainer).toBeTruthy();
+
+    // Scroll mouse wheel up (deltaY < 0 -> Zoom In)
+    fireEvent.wheel(viewportContainer, {
+      deltaY: -100,
+      clientX: 200,
+      clientY: 200,
+    });
+
+    // Zoom level updates to 115%
+    await waitFor(() => {
+      expect(screen.getByTitle('Current zoom level')).toHaveTextContent('115%');
+    });
+
+    // Double click to reset to FIT
+    fireEvent.doubleClick(viewportContainer);
+    await waitFor(() => {
+      expect(screen.getByTitle('Current zoom level')).toHaveTextContent('FIT');
+    });
+
+    // Zoom In using toolbar button
+    fireEvent.click(screen.getByTitle('Zoom In (Scroll Up)'));
+    await waitFor(() => {
+      expect(screen.getByTitle('Current zoom level')).toHaveTextContent('125%');
+    });
+
+    // Click Fit button
+    fireEvent.click(screen.getByTitle('Fit to screen / Reset zoom'));
+    expect(screen.getByTitle('Current zoom level')).toHaveTextContent('FIT');
+  });
 });

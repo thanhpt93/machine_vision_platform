@@ -25,6 +25,7 @@
     "test:watch": "vitest",
     "py:install": "pip install -r python_runtime/requirements.txt",
     "py:start": "python -m uvicorn vision_runtime.main:app --app-dir python_runtime --host 127.0.0.1 --port 8000 --reload",
+    "py:start:production": "cross-env NOVA_DEPLOYMENT_MODE=production python -m uvicorn vision_runtime.main:app --app-dir python_runtime --host 127.0.0.1 --port 8000 --reload",
     "py:test": "pytest python_runtime/tests"
   },
   "dependencies": {
