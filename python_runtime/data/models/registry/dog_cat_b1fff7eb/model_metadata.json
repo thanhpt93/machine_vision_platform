@@ -1,0 +1,50 @@
+{
+  "model_name": "mobilenet_v3_small_20261028_170820_mobilenet_v3_small",
+  "task_type": "IMAGE_CLASSIFICATION",
+  "architecture": "mobilenet_v3_small",
+  "framework": "PyTorch",
+  "export_format": "ONNX",
+  "input_tensor": {
+    "name": "input",
+    "shape": [
+      -1,
+      3,
+      224,
+      224
+    ],
+    "data_type": "float32"
+  },
+  "output_tensor": {
+    "name": "output",
+    "shape": [
+      -1,
+      2
+    ],
+    "data_type": "float32",
+    "semantics": "logits"
+  },
+  "preprocessing": {
+    "input_size": [
+      224,
+      224
+    ],
+    "channels": 3,
+    "color_space": "RGB",
+    "resize_policy": "bilinear",
+    "normalization": {
+      "mean": [
+        0.485,
+        0.456,
+        0.406
+      ],
+      "std": [
+        0.229,
+        0.224,
+        0.225
+      ]
+    }
+  },
+  "num_classes": 2,
+  "onnx_sha256": "f033ac6ed3a3f82e15d52cfe0e848b2e365e42fcaeecc8b0d5a07c8a743bddfe",
+  "schema_version": "1.0.0"
+}

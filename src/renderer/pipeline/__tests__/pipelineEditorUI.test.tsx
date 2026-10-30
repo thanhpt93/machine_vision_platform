@@ -47,7 +47,7 @@ describe('Pipeline Editor UI Panels', () => {
       render(<NodeLibrary />);
       expect(screen.getAllByText('Ready').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Pending').length).toBeGreaterThan(0);
-      expect(screen.getByText('#ai')).toBeInTheDocument();
+      expect(screen.getAllByText('#ai')[0]).toBeInTheDocument();
     });
 
     it('allows vertical category selection and toggles category list', () => {
@@ -152,14 +152,27 @@ describe('Pipeline Editor UI Panels', () => {
     it('displays Runtime Pending notice for nodes without runtime implementation', () => {
       let aiId = '';
       act(() => {
+        aiId = usePipelineStore.getState().addNode('ai_segmentation')!;
+        usePipelineStore.getState().selectNode(aiId);
+      });
+
+      render(<PropertiesPanel />);
+      expect(screen.getByText('AI Instance Segmentation')).toBeInTheDocument();
+      expect(screen.getByText('Runtime Pending')).toBeInTheDocument();
+      expect(screen.getByText('Runtime Not Implemented')).toBeInTheDocument();
+    });
+
+    it('displays Runtime Ready notice and AI properties for implemented AI nodes', () => {
+      let aiId = '';
+      act(() => {
         aiId = usePipelineStore.getState().addNode('ai_detection')!;
         usePipelineStore.getState().selectNode(aiId);
       });
 
       render(<PropertiesPanel />);
       expect(screen.getByText('AI Object Detection')).toBeInTheDocument();
-      expect(screen.getByText('Runtime Pending')).toBeInTheDocument();
-      expect(screen.getByText('Runtime Not Implemented')).toBeInTheDocument();
+      expect(screen.getByText('Runtime Ready')).toBeInTheDocument();
+      expect(screen.getByText('Select AI Model')).toBeInTheDocument();
     });
 
     it('renders OpenCV execution results, preview image, and structured detections', () => {

@@ -5,6 +5,10 @@ import {
   InspectionRecord,
   ProductionReleaseDetails,
   ProductionReleaseSummary,
+  AiModelItem,
+  ImportModelPayload,
+  ModelValidationResult,
+  HardwareInfo,
 } from '../types/api';
 import {
   LicenseDetailsResponse,
@@ -349,6 +353,97 @@ export class RuntimeApiService {
       throw new Error(detail);
     }
 
+    return response.json();
+  }
+
+  // ---------------------------------------------------------------------------
+  // AI Model Registry APIs
+  // ---------------------------------------------------------------------------
+
+  public async getHardwareInfo(): Promise<HardwareInfo> {
+    const response = await fetch(`${this.baseUrl}/api/models/hardware/info`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) {
+      const detail = await this.extractErrorMessage(response);
+      throw new Error(detail);
+    }
+    return response.json();
+  }
+
+  public async getModels(taskType?: string): Promise<AiModelItem[]> {
+    const url = new URL(`${this.baseUrl}/api/models`);
+    if (taskType) {
+      url.searchParams.set('task_type', taskType);
+    }
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) {
+      const detail = await this.extractErrorMessage(response);
+      throw new Error(detail);
+    }
+    return response.json();
+  }
+
+  public async getModel(id: string): Promise<AiModelItem> {
+    const response = await fetch(`${this.baseUrl}/api/models/${encodeURIComponent(id)}`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) {
+      const detail = await this.extractErrorMessage(response);
+      throw new Error(detail);
+    }
+    return response.json();
+  }
+
+  public async importModel(payload: ImportModelPayload): Promise<AiModelItem> {
+    const response = await fetch(`${this.baseUrl}/api/models/import`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const detail = await this.extractErrorMessage(response);
+      throw new Error(detail);
+    }
+    return response.json();
+  }
+
+  public async validateModel(id: string): Promise<ModelValidationResult> {
+    const response = await fetch(`${this.baseUrl}/api/models/${encodeURIComponent(id)}/validate`, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) {
+      const detail = await this.extractErrorMessage(response);
+      throw new Error(detail);
+    }
+    return response.json();
+  }
+
+  public async deleteModel(id: string, force = false, workspaceDir = ''): Promise<{ success: boolean; message: string }> {
+    const url = new URL(`${this.baseUrl}/api/models/${encodeURIComponent(id)}`);
+    if (force) {
+      url.searchParams.set('force', 'true');
+    }
+    if (workspaceDir) {
+      url.searchParams.set('workspace_dir', workspaceDir);
+    }
+    const response = await fetch(url.toString(), {
+      method: 'DELETE',
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) {
+      const detail = await this.extractErrorMessage(response);
+      throw new Error(detail);
+    }
     return response.json();
   }
 

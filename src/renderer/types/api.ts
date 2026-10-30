@@ -158,3 +158,58 @@ export interface InspectionRecord {
   preview_references: Record<string, string>;
   error_details?: InspectionErrorDetails | null;
 }
+
+// -----------------------------------------------------------------------------
+// AI Model Registry & Inference Types
+// -----------------------------------------------------------------------------
+export interface ModelClassItem {
+  index: number;
+  name: string;
+  id?: string | null;
+  label_id?: string | null;
+  color?: string | null;
+  is_background: boolean;
+}
+
+export interface AiModelItem {
+  id: string;
+  name: string;
+  task_type: 'IMAGE_CLASSIFICATION' | 'OBJECT_DETECTION';
+  architecture: string;
+  version: string;
+  format: string;
+  input_size: number[];
+  num_classes: number;
+  classes: ModelClassItem[];
+  source: string;
+  status: 'valid' | 'invalid' | 'unsupported';
+  import_date: string;
+  file_size_bytes: number;
+  checksum_sha256: string;
+  artifact_path: string;
+  metadata: Record<string, any>;
+  validation_report?: Record<string, any> | null;
+}
+
+export interface ImportModelPayload {
+  source_path: string;
+  custom_name?: string;
+}
+
+export interface ModelValidationResult {
+  model_id: string;
+  is_valid: boolean;
+  status: string;
+  checksum_verified: boolean;
+  session_ready: boolean;
+  execution_provider: string;
+  errors: string[];
+}
+
+export interface HardwareInfo {
+  available_providers: string[];
+  selected_provider: string;
+  cuda_available: boolean;
+  device_name?: string | null;
+  cpu_cores: number;
+}

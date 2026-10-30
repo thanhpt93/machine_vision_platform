@@ -1,4 +1,4 @@
-"""OpenCV Vision Handlers Package (9 Categories)."""
+"""OpenCV Vision Handlers Package (9 Categories + AI Inference)."""
 
 # Legacy imports for backward compatibility
 from .image_loader import image_loader_handler
@@ -120,6 +120,12 @@ from .data_logging import (
     result_history_handler,
 )
 
+# AI Inference Handlers
+from .ai_inference import (
+    ai_classification_handler,
+    ai_detection_handler,
+)
+
 __all__ = [
     # Legacy
     "image_loader_handler",
@@ -222,4 +228,8 @@ __all__ = [
     "export_csv_handler",
     "inspection_logger_handler",
     "result_history_handler",
+
+    # AI Inference
+    "ai_classification_handler",
+    "ai_detection_handler",
 ]

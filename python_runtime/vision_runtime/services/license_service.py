@@ -39,12 +39,24 @@ PRODUCT_ID_MVP = "NOVA-MVP"
 MAX_LICENSE_FILE_BYTES = 1024 * 1024
 
 # Official Active Public Keys trusted by NOVA Machine Vision Platform
+# Official Active Public Keys trusted by NOVA Machine Vision Platform
+PRIMARY_NOVA_KEY_2026_01 = (
+    "-----BEGIN PUBLIC KEY-----\n"
+    "MCowBQYDK2VwAyEAzOCzzS3O49MXJ39H+jQOynN3TIrcC1qrfEvNAqw3a0k=\n"
+    "-----END PUBLIC KEY-----\n"
+)
+LEGACY_NOVA_KEY_2026_01 = (
+    "-----BEGIN PUBLIC KEY-----\n"
+    "MCowBQYDK2VwAyEACGcJhmwm49O8M7bVPf2HpBehD8Gm3O0RYS17vnDtiho=\n"
+    "-----END PUBLIC KEY-----\n"
+)
+
 DEFAULT_TRUSTED_PUBLIC_KEYS: Dict[str, str] = {
-    "nova-key-2026-01": (
-        "-----BEGIN PUBLIC KEY-----\n"
-        "MCowBQYDK2VwAyEACGcJhmwm49O8M7bVPf2HpBehD8Gm3O0RYS17vnDtiho=\n"
-        "-----END PUBLIC KEY-----\n"
-    )
+    "nova-key-2026-01": PRIMARY_NOVA_KEY_2026_01,
+}
+
+FALLBACK_TRUSTED_PUBLIC_KEYS: Dict[str, List[str]] = {
+    "nova-key-2026-01": [PRIMARY_NOVA_KEY_2026_01, LEGACY_NOVA_KEY_2026_01],
 }
 
 
@@ -280,15 +292,27 @@ class LicenseService:
             )
 
         canonical_bytes = canonicalize_payload(payload)
-        pub_key = load_ed25519_public_key(pub_pem)
+        candidate_pems: List[str] = [pub_pem]
+        for fb in FALLBACK_TRUSTED_PUBLIC_KEYS.get(key_id, []):
+            if fb not in candidate_pems:
+                candidate_pems.append(fb)
 
-        try:
-            pub_key.verify(signature_bytes, canonical_bytes)
-        except InvalidSignature as exc:
+        verified = False
+        last_exc: Optional[Exception] = None
+        for pem in candidate_pems:
+            try:
+                pub_key = load_ed25519_public_key(pem)
+                pub_key.verify(signature_bytes, canonical_bytes)
+                verified = True
+                break
+            except InvalidSignature as exc:
+                last_exc = exc
+
+        if not verified:
             raise LicenseVerificationError(
                 "Cryptographic signature verification failed: digital signature does not match canonical payload.",
                 LicenseStatusEnum.INVALID_SIGNATURE,
-            ) from exc
+            ) from last_exc
 
         return payload, key_id
 

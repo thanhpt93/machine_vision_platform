@@ -20,24 +20,17 @@ from vision_runtime.services.license_service import (
     ALGORITHM_ED25519,
     PAYLOAD_SCHEMA_VERSION,
     PRODUCT_ID_MVP,
+    DEFAULT_TRUSTED_PUBLIC_KEYS,
     canonicalize_payload,
     format_utc_timestamp,
+    license_service,
 )
 
 # Optional local dev private key path from license_platform
 _DEV_KEY_PATH = Path(r"C:\project\license_platform\backend\keys\nova-key-2026-01_private.pem")
 
-
-def get_official_dev_key() -> Optional[Ed25519PrivateKey]:
-    if _DEV_KEY_PATH.is_file():
-        try:
-            pem_bytes = _DEV_KEY_PATH.read_bytes()
-            key = serialization.load_pem_private_key(pem_bytes, password=None)
-            if isinstance(key, Ed25519PrivateKey):
-                return key
-        except Exception:
-            pass
-    return None
+_MOCK_DEV_KEY: Optional[Ed25519PrivateKey] = None
+_MOCK_DEV_PUB: Optional[str] = None
 
 
 def generate_test_keypair() -> Tuple[Ed25519PrivateKey, str]:
@@ -49,6 +42,23 @@ def generate_test_keypair() -> Tuple[Ed25519PrivateKey, str]:
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
     ).decode("utf-8")
     return priv, pub_pem
+
+
+def get_official_dev_key() -> Optional[Ed25519PrivateKey]:
+    global _MOCK_DEV_KEY, _MOCK_DEV_PUB
+    if _DEV_KEY_PATH.is_file():
+        try:
+            pem_bytes = _DEV_KEY_PATH.read_bytes()
+            key = serialization.load_pem_private_key(pem_bytes, password=None)
+            if isinstance(key, Ed25519PrivateKey):
+                return key
+        except Exception:
+            pass
+    if _MOCK_DEV_KEY is None:
+        _MOCK_DEV_KEY, _MOCK_DEV_PUB = generate_test_keypair()
+        DEFAULT_TRUSTED_PUBLIC_KEYS["nova-key-2026-01"] = _MOCK_DEV_PUB
+        license_service.register_trusted_public_key("nova-key-2026-01", _MOCK_DEV_PUB)
+    return _MOCK_DEV_KEY
 
 
 def create_signed_license_artifact(

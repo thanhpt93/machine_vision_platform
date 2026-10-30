@@ -1,0 +1,17 @@
+{
+  "class_count": 2,
+  "classes": [
+    {
+      "index": 0,
+      "label_id": "ad327bf5-5c61-4a3b-b727-31862d06cb36",
+      "name": "abc",
+      "color": "#06b6d4"
+    },
+    {
+      "index": 1,
+      "label_id": "6f485209-d65c-4996-af62-0195e6a05a81",
+      "name": "pcs",
+      "color": "#ef4444"
+    }
+  ]
+}

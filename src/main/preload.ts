@@ -49,6 +49,13 @@ export interface SelectLicenseResult {
   error?: string;
 }
 
+export interface SelectModelPackageResult {
+  success: boolean;
+  packagePath?: string;
+  canceled?: boolean;
+  error?: string;
+}
+
 export interface ElectronAPI {
   getAppInfo: () => Promise<AppInfo>;
   getDeploymentMode?: () => DeploymentMode;
@@ -63,6 +70,7 @@ export interface ElectronAPI {
   openPipelineFile: () => Promise<FileOpenResult>;
   selectImageFile: () => Promise<SelectImageResult>;
   selectLicenseFile: () => Promise<SelectLicenseResult>;
+  selectModelPackage?: () => Promise<SelectModelPackageResult>;
   onMenuAction: (callback: (action: string) => void) => () => void;
 }
 
@@ -94,6 +102,7 @@ const electronAPI: ElectronAPI = {
   openPipelineFile: () => ipcRenderer.invoke('pipeline:open-file'),
   selectImageFile: () => ipcRenderer.invoke('dialog:select-image'),
   selectLicenseFile: () => ipcRenderer.invoke('dialog:select-license'),
+  selectModelPackage: () => ipcRenderer.invoke('dialog:select-model-package'),
   onMenuAction: (callback: (action: string) => void) => {
     const handler = (_event: unknown, action: string) => callback(action);
     ipcRenderer.on('menu:action', handler);

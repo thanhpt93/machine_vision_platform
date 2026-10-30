@@ -9,10 +9,12 @@ import {
   Sun,
   Moon,
   ScanEye,
+  Brain,
 } from 'lucide-react';
 import { HealthDashboard } from './components/HealthDashboard';
 import { PipelineEditor } from './pipeline/components/PipelineEditor';
 import { ProductionLayout } from './production/components/ProductionLayout';
+import { AiModelRegistry } from './components/AiModelRegistry';
 import { AppInfo } from '../main/preload';
 import { useThemeStore } from './store/themeStore';
 import { useLicenseStore } from './store/licenseStore';
@@ -22,7 +24,7 @@ import { LicenseActivationModal } from './license/LicenseActivationModal';
 import { LicenseDetailsModal } from './license/LicenseDetailsModal';
 
 interface AppProps {
-  initialTab?: 'editor' | 'diagnostics' | 'production';
+  initialTab?: 'editor' | 'diagnostics' | 'production' | 'models';
   deploymentModeOverride?: DeploymentMode;
 }
 
@@ -33,7 +35,7 @@ export const App: React.FC<AppProps> = ({
   const isProdEdition = isProductionEdition(deploymentModeOverride);
 
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
-  const [activeTab, setActiveTab] = useState<'editor' | 'diagnostics' | 'production'>(
+  const [activeTab, setActiveTab] = useState<'editor' | 'diagnostics' | 'production' | 'models'>(
     isProdEdition ? 'production' : initialTab
   );
 
@@ -113,7 +115,7 @@ export const App: React.FC<AppProps> = ({
             </div>
           </div>
 
-          {/* Navigation Tabs (Developer Mode + Production Mode Switcher) */}
+          {/* Navigation Tabs (Developer Mode + Production Mode Switcher + AI Models) */}
           <nav className="flex items-center space-x-1 bg-slate-100 dark:bg-slate-950/80 p-0.5 rounded-lg border border-slate-200 dark:border-slate-800 transition-colors">
             <button
               type="button"
@@ -127,6 +129,20 @@ export const App: React.FC<AppProps> = ({
             >
               <Workflow className="w-3.5 h-3.5" />
               <span>Pipeline Editor</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('models')}
+              data-testid="mode-tab-models"
+              className={`flex items-center space-x-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                activeTab === 'models'
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              <Brain className="w-3.5 h-3.5" />
+              <span>AI Models</span>
             </button>
 
             <button
@@ -212,6 +228,8 @@ export const App: React.FC<AppProps> = ({
           />
         ) : activeTab === 'production' ? (
           <ProductionLayout onSwitchToDeveloperMode={() => setActiveTab('editor')} />
+        ) : activeTab === 'models' ? (
+          <AiModelRegistry />
         ) : (
           <div className="h-full overflow-y-auto max-w-7xl w-full mx-auto p-6 md:p-8">
             <div className="mb-6 flex items-center justify-between">

@@ -1,0 +1,132 @@
+[
+  {
+    "id": "dog_cat_b1fff7eb",
+    "name": "Dog&Cat",
+    "task_type": "IMAGE_CLASSIFICATION",
+    "architecture": "mobilenet_v3_small",
+    "version": "1.0.0",
+    "format": "ONNX",
+    "input_size": [
+      224,
+      224
+    ],
+    "num_classes": 2,
+    "classes": [
+      {
+        "index": 0,
+        "name": "abc",
+        "id": "ad327bf5-5c61-4a3b-b727-31862d06cb36",
+        "label_id": "ad327bf5-5c61-4a3b-b727-31862d06cb36",
+        "color": "#06b6d4",
+        "is_background": false
+      },
+      {
+        "index": 1,
+        "name": "pcs",
+        "id": "6f485209-d65c-4996-af62-0195e6a05a81",
+        "label_id": "6f485209-d65c-4996-af62-0195e6a05a81",
+        "color": "#ef4444",
+        "is_background": false
+      }
+    ],
+    "source": "NOVA AI Trainer",
+    "status": "valid",
+    "import_date": "2026-10-30T07:21:20.409259+00:00",
+    "file_size_bytes": 6089255,
+    "checksum_sha256": "f033ac6ed3a3f82e15d52cfe0e848b2e365e42fcaeecc8b0d5a07c8a743bddfe",
+    "artifact_path": "C:\\Project\\machine_vision_platform\\python_runtime\\data\\models\\registry\\dog_cat_b1fff7eb\\model.onnx",
+    "metadata": {
+      "model_name": "mobilenet_v3_small_20261028_170820_mobilenet_v3_small",
+      "task_type": "IMAGE_CLASSIFICATION",
+      "architecture": "mobilenet_v3_small",
+      "framework": "PyTorch",
+      "export_format": "ONNX",
+      "input_tensor": {
+        "name": "input",
+        "shape": [
+          -1,
+          3,
+          224,
+          224
+        ],
+        "data_type": "float32"
+      },
+      "output_tensor": {
+        "name": "output",
+        "shape": [
+          -1,
+          2
+        ],
+        "data_type": "float32",
+        "semantics": "logits"
+      },
+      "preprocessing": {
+        "input_size": [
+          224,
+          224
+        ],
+        "channels": 3,
+        "color_space": "RGB",
+        "resize_policy": "bilinear",
+        "normalization": {
+          "mean": [
+            0.485,
+            0.456,
+            0.406
+          ],
+          "std": [
+            0.229,
+            0.224,
+            0.225
+          ]
+        }
+      },
+      "num_classes": 2,
+      "onnx_sha256": "f033ac6ed3a3f82e15d52cfe0e848b2e365e42fcaeecc8b0d5a07c8a743bddfe",
+      "schema_version": "1.0.0"
+    },
+    "validation_report": {
+      "loss": 0.2954,
+      "accuracy": 1.0,
+      "precision_macro": 1.0,
+      "recall_macro": 1.0,
+      "f1_macro": 1.0,
+      "per_class_metrics": [
+        {
+          "class_name": "abc",
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "support": 1
+        },
+        {
+          "class_name": "pcs",
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "support": 1
+        }
+      ],
+      "confusion_matrix": {
+        "labels": [
+          "abc",
+          "pcs"
+        ],
+        "matrix": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      },
+      "misclassified_samples": [],
+      "total_samples": 2,
+      "evaluated_split": "val",
+      "evaluated_at": "2026-10-28T10:08:26.251294+00:00"
+    }
+  }
+]

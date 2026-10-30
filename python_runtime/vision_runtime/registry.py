@@ -1365,3 +1365,42 @@ runtime_registry.register(
     ),
     handler_fn=H.result_history_handler,
 )
+
+# ==============================================================================
+# CATEGORY 10: AI INFERENCE
+# ==============================================================================
+runtime_registry.register(
+    NodeContract(
+        node_type="ai_classification",
+        version="1.0.0",
+        display_name="AI Image Classification",
+        category="ai_inference",
+        inputs=[PortContract(id="image_in", name="Image In", data_type="ImageFrame")],
+        outputs=[
+            PortContract(id="classification_result", name="Classification Result", data_type="ClassificationResult"),
+            PortContract(id="top_prediction", name="Top Prediction", data_type="String"),
+            PortContract(id="image_out", name="Preview Image", data_type="ImageFrame"),
+        ],
+        handler="vision_runtime.handlers.ai_inference.ai_classification_handler",
+        is_supported=True,
+    ),
+    handler_fn=H.ai_classification_handler,
+)
+
+runtime_registry.register(
+    NodeContract(
+        node_type="ai_detection",
+        version="1.0.0",
+        display_name="AI Object Detection",
+        category="ai_inference",
+        inputs=[PortContract(id="image_in", name="Image In", data_type="ImageFrame")],
+        outputs=[
+            PortContract(id="detections", name="Detections", data_type="DetectionResult"),
+            PortContract(id="count", name="Total Count", data_type="Scalar"),
+            PortContract(id="image_out", name="Annotated Image", data_type="ImageFrame"),
+        ],
+        handler="vision_runtime.handlers.ai_inference.ai_detection_handler",
+        is_supported=True,
+    ),
+    handler_fn=H.ai_detection_handler,
+)

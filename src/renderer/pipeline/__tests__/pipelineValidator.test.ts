@@ -133,13 +133,11 @@ describe('Pipeline Validator & Node Registry', () => {
     const nodesWithAi: PipelineNodeInstance[] = [
       {
         id: 'ai_node',
-        nodeType: 'ai_detection',
-        name: 'ONNX Defect Detector',
+        nodeType: 'ai_segmentation',
+        name: 'ONNX Defect Segmenter',
         position: { x: 100, y: 100 },
         config: {
-          modelPath: 'models/yolo.onnx',
           confidenceThreshold: 0.5,
-          nmsThreshold: 0.45,
         },
       },
     ];

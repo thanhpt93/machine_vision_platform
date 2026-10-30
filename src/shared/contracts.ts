@@ -216,6 +216,13 @@ export const CATEGORY_CATALOG: CategoryMetadata[] = [
     icon: 'database',
     displayOrder: 9,
   },
+  {
+    id: 'ai_inference',
+    name: 'AI Inference',
+    description: 'Deep learning classification and object detection inference models',
+    icon: 'brain',
+    displayOrder: 10,
+  },
 ];
 
 /**

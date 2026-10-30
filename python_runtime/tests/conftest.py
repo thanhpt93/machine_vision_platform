@@ -5,14 +5,13 @@ import os
 from pathlib import Path
 import pytest
 
-from tests.license_test_helpers import create_signed_license_artifact
+from tests.license_test_helpers import create_signed_license_artifact, get_official_dev_key
 from vision_runtime.services.license_service import license_service
 
 
 @pytest.fixture(autouse=True)
 def setup_test_license_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Autouse fixture that provides an isolated license store with an active valid license
-
     matching the running edition for each test, preventing interference across tests.
     """
     mode = os.environ.get("NOVA_DEPLOYMENT_MODE", "developer").strip().lower()
@@ -20,6 +19,9 @@ def setup_test_license_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
     license_dir = tmp_path / "test_license_store"
     license_dir.mkdir(parents=True, exist_ok=True)
+
+    # Ensure dev/mock signing key is registered
+    get_official_dev_key()
 
     # Generate and install a valid signed license
     artifact = create_signed_license_artifact(edition=edition)

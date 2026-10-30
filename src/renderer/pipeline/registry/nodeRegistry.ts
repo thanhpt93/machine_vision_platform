@@ -5,6 +5,10 @@ import {
   PortDefinition,
   areDataTypesCompatible,
 } from '@/shared/contracts';
+import {
+  AiClassificationProperties,
+  AiDetectionProperties,
+} from '../components/AiModelProperties';
 
 export type ConfigFieldType = 'text' | 'number' | 'range' | 'select' | 'checkbox';
 
@@ -105,10 +109,22 @@ export const GaussianBlurConfigSchema = z.object({
   sigmaX: z.number().min(0.1, 'SigmaX must be >= 0.1').max(20, 'SigmaX must be <= 20'),
 });
 
+export const AiClassificationConfigSchema = z.object({
+  modelId: z.string().default(''),
+  confidenceThreshold: z.number().min(0.0).max(1.0).default(0.0),
+  topK: z.number().int().min(1).max(20).default(5),
+  executionProvider: z.string().optional(),
+});
+
 export const AiDetectionConfigSchema = z.object({
-  modelPath: z.string().min(1, 'Model path is required'),
-  confidenceThreshold: z.number().min(0.01).max(1.0),
-  nmsThreshold: z.number().min(0.01).max(1.0),
+  modelId: z.string().default(''),
+  confidenceThreshold: z.number().min(0.01).max(1.0).default(0.5),
+  iouThreshold: z.number().min(0.05).max(1.0).default(0.5),
+  maxDetections: z.number().int().min(1).max(500).default(100),
+  drawBoxes: z.boolean().default(true),
+  executionProvider: z.string().optional(),
+  modelPath: z.string().optional(),
+  nmsThreshold: z.number().optional(),
 });
 
 // -------------------------------------------------------------
@@ -2623,30 +2639,96 @@ nodeRegistry.register({
 });
 
 nodeRegistry.register({
+  nodeType: 'ai_classification',
+  version: '1.0.0',
+  displayName: 'AI Image Classification',
+  category: 'ai_inference',
+  description: 'Classify visual inspection frames using deep learning models trained in NOVA AI Trainer.',
+  icon: 'brain',
+  tags: ['ai', 'classification', 'onnx', 'deep learning', 'defect'],
+  inputs: [
+    { id: 'image_in', name: 'Image In', dataType: 'ImageFrame', description: 'Inspection image frame for classification', required: true },
+  ],
+  outputs: [
+    { id: 'classification_result', name: 'Classification Result', dataType: 'ClassificationResult', description: 'Class prediction list and confidence scores', required: true },
+    { id: 'top_prediction', name: 'Top Prediction', dataType: 'String', description: 'Name of the highest-confidence prediction', required: false },
+    { id: 'image_out', name: 'Preview Image', dataType: 'ImageFrame', description: 'Image with annotated classification card', required: true },
+  ],
+  defaultConfig: { modelId: '', confidenceThreshold: 0.0, topK: 5 },
+  configSchema: AiClassificationConfigSchema,
+  configFields: [
+    { key: 'modelId', label: 'Model ID', type: 'text', description: 'ID of imported classification model' },
+    { key: 'confidenceThreshold', label: 'Min Confidence', type: 'range', min: 0, max: 1, step: 0.01, defaultValue: 0 },
+    { key: 'topK', label: 'Top K Predictions', type: 'number', min: 1, max: 20, defaultValue: 5 },
+  ],
+  customPropertiesComponent: AiClassificationProperties,
+  runtime: {
+    supported: true,
+    handler: 'vision_runtime.handlers.ai_inference.ai_classification_handler',
+    minRuntimeVersion: '0.1.0',
+  },
+});
+
+nodeRegistry.register({
   nodeType: 'ai_detection',
   version: '1.0.0',
   displayName: 'AI Object Detection',
   category: 'ai_inference',
-  description: 'Reserved for future deep neural network detector (YOLO / ONNX). Non-AI traditional vision is active in this phase.',
+  description: 'Detect industrial defects, parts, and objects using deep learning models exported from NOVA AI Trainer.',
   icon: 'brain',
-  tags: ['ai', 'deep learning', 'onnx', 'yolo', 'detection'],
+  tags: ['ai', 'deep learning', 'onnx', 'faster-rcnn', 'detection', 'bounding-box'],
   inputs: [
-    { id: 'image_in', name: 'Image In', dataType: 'ImageFrame', description: 'Input frame for tensor inference', required: true },
+    { id: 'image_in', name: 'Image In', dataType: 'ImageFrame', description: 'Input frame for object detection inference', required: true },
   ],
   outputs: [
-    { id: 'detections', name: 'Detections', dataType: 'DetectionResult', description: 'Predicted bounding boxes and confidence scores', required: true },
+    { id: 'detections', name: 'Detections', dataType: 'DetectionResult', description: 'Predicted bounding boxes, labels, and confidence scores', required: true },
+    { id: 'count', name: 'Total Count', dataType: 'Scalar', description: 'Number of detected objects', required: false },
+    { id: 'image_out', name: 'Annotated Image', dataType: 'ImageFrame', description: 'Image with rendered detection bounding boxes', required: true },
   ],
-  defaultConfig: { modelPath: 'models/pcb_defect_yolov8.onnx', confidenceThreshold: 0.5, nmsThreshold: 0.45 },
+  defaultConfig: { modelId: '', confidenceThreshold: 0.5, iouThreshold: 0.5, maxDetections: 100, drawBoxes: true },
   configSchema: AiDetectionConfigSchema,
   configFields: [
-    { key: 'modelPath', label: 'ONNX Model Path', type: 'text', defaultValue: 'models/pcb_defect_yolov8.onnx' },
-    { key: 'confidenceThreshold', label: 'Confidence Threshold', type: 'range', min: 0.05, max: 1.0, step: 0.05, defaultValue: 0.5 },
+    { key: 'modelId', label: 'Model ID', type: 'text', description: 'ID of imported object detection model' },
+    { key: 'confidenceThreshold', label: 'Confidence Threshold', type: 'range', min: 0.01, max: 1.0, step: 0.01, defaultValue: 0.5 },
+    { key: 'iouThreshold', label: 'NMS IoU Threshold', type: 'range', min: 0.05, max: 1.0, step: 0.05, defaultValue: 0.5 },
+    { key: 'maxDetections', label: 'Max Detections', type: 'number', min: 1, max: 500, defaultValue: 100 },
+    { key: 'drawBoxes', label: 'Draw Bounding Boxes', type: 'checkbox', defaultValue: true },
+  ],
+  customPropertiesComponent: AiDetectionProperties,
+  runtime: {
+    supported: true,
+    handler: 'vision_runtime.handlers.ai_inference.ai_detection_handler',
+    minRuntimeVersion: '0.1.0',
+  },
+});
+
+nodeRegistry.register({
+  nodeType: 'ai_segmentation',
+  version: '1.0.0',
+  displayName: 'AI Instance Segmentation',
+  category: 'ai_inference',
+  description: 'Segment industrial parts and defects with pixel-level polygon masks (pending runtime).',
+  icon: 'brain',
+  tags: ['ai', 'segmentation', 'mask', 'polygon'],
+  inputs: [
+    { id: 'image_in', name: 'Image In', dataType: 'ImageFrame', description: 'Inspection image frame', required: true },
+  ],
+  outputs: [
+    { id: 'masks', name: 'Segmentation Masks', dataType: 'DetectionResult', description: 'Predicted masks and scores', required: true },
+    { id: 'image_out', name: 'Preview Image', dataType: 'ImageFrame', description: 'Image with colored masks', required: true },
+  ],
+  defaultConfig: { modelId: '', confidenceThreshold: 0.5 },
+  configSchema: z.object({
+    modelId: z.string().optional(),
+    confidenceThreshold: z.number().min(0).max(1).default(0.5),
+  }),
+  configFields: [
+    { key: 'modelId', label: 'Model ID', type: 'text', description: 'ID of segmentation model' },
+    { key: 'confidenceThreshold', label: 'Confidence Threshold', type: 'range', min: 0.01, max: 1.0, step: 0.01, defaultValue: 0.5 },
   ],
   runtime: {
     supported: false,
-    handler: 'vision_runtime.handlers.onnx_detector',
-    minRuntimeVersion: '0.3.0',
-    notes: 'Non-AI phase: Deep learning reserved for future AI engine integration.',
+    notes: 'Pending Vision Runtime model execution module',
   },
 });
 

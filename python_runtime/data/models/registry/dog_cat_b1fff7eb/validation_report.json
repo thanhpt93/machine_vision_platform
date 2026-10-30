@@ -1,0 +1,43 @@
+{
+  "loss": 0.2954,
+  "accuracy": 1.0,
+  "precision_macro": 1.0,
+  "recall_macro": 1.0,
+  "f1_macro": 1.0,
+  "per_class_metrics": [
+    {
+      "class_name": "abc",
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 1
+    },
+    {
+      "class_name": "pcs",
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "support": 1
+    }
+  ],
+  "confusion_matrix": {
+    "labels": [
+      "abc",
+      "pcs"
+    ],
+    "matrix": [
+      [
+        1,
+        0
+      ],
+      [
+        0,
+        1
+      ]
+    ]
+  },
+  "misclassified_samples": [],
+  "total_samples": 2,
+  "evaluated_split": "val",
+  "evaluated_at": "2026-10-28T10:08:26.251294+00:00"
+}

@@ -454,6 +454,31 @@ ipcMain.handle('dialog:select-license', async () => {
   }
 });
 
+// Model Package Selection Dialog Handler (Directory or ZIP)
+ipcMain.handle('dialog:select-model-package', async () => {
+  if (!mainWindow) return { success: false, error: 'No main window' };
+
+  try {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: 'Select Exported AI Model Package (Directory or ZIP)',
+      properties: ['openDirectory', 'openFile'],
+      filters: [
+        { name: 'Model Package Archives (*.zip)', extensions: ['zip'] },
+        { name: 'All Files (*.*)', extensions: ['*'] },
+      ],
+    });
+
+    if (canceled || filePaths.length === 0) {
+      return { success: false, canceled: true };
+    }
+
+    return { success: true, packagePath: filePaths[0] };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { success: false, error: message };
+  }
+});
+
 // ============================================================================
 // App Lifecycle & Managed Runtime Startup / Shutdown
 // ============================================================================
