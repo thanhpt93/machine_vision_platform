@@ -20,7 +20,7 @@ const categoryColorMap: Record<string, { bg: string; text: string; border: strin
   image_preparation: { bg: 'bg-cyan-50 dark:bg-cyan-950/80', text: 'text-cyan-700 dark:text-cyan-400', border: 'border-cyan-300 dark:border-cyan-700/60' },
   image_processing: { bg: 'bg-blue-50 dark:bg-blue-950/80', text: 'text-blue-700 dark:text-blue-400', border: 'border-blue-300 dark:border-blue-700/60' },
   segmentation: { bg: 'bg-teal-50 dark:bg-teal-950/80', text: 'text-teal-700 dark:text-teal-400', border: 'border-teal-300 dark:border-teal-700/60' },
-  feature_extraction: { bg: 'bg-amber-50 dark:bg-amber-950/80', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-300 dark:border-amber-700/60' },
+  feature_extraction: { bg: 'bg-amber-50 dark:bg-amber-700 dark:text-amber-400', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-300 dark:border-amber-700/60' },
   measurement_metrology: { bg: 'bg-lime-50 dark:bg-lime-950/80', text: 'text-lime-700 dark:text-lime-400', border: 'border-lime-300 dark:border-lime-700/60' },
   decision_inspection_logic: { bg: 'bg-indigo-50 dark:bg-indigo-950/80', text: 'text-indigo-700 dark:text-indigo-400', border: 'border-indigo-300 dark:border-indigo-700/60' },
   visualization: { bg: 'bg-pink-50 dark:bg-pink-950/80', text: 'text-pink-700 dark:text-pink-400', border: 'border-pink-300 dark:border-pink-700/60' },
@@ -136,17 +136,28 @@ export const CustomPipelineNode: React.FC<NodeProps> = memo(({ id, data, selecte
 
         {/* Runtime Execution & Validation Status Indicator */}
         <div className="shrink-0 flex items-center space-x-1">
-          {isRunning ? (            <span title="Running in OpenCV Python Runtime...">
+          {isRunning ? (
+            <span title="Running in OpenCV Python Runtime...">
               <Loader2 className="w-4 h-4 text-cyan-500 dark:text-cyan-400 animate-spin" />
             </span>
           ) : isCompleted ? (
-            <span
-              className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-400 dark:border-emerald-800 flex items-center space-x-0.5"
-              title={`Execution duration: ${nodeExecState.durationMs}ms`}
-            >
-              <Clock className="w-2.5 h-2.5" />
-              <span>{nodeExecState.durationMs}ms</span>
-            </span>
+            <div className="flex items-center space-x-1">
+              {typeof nodeExecState?.outputMetadata?.count === 'number' && (
+                <span
+                  className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-950/80 dark:text-purple-400 dark:border-purple-800"
+                  title={`Detected count: ${nodeExecState.outputMetadata.count}`}
+                >
+                  {nodeExecState.outputMetadata.count} {nodeType === 'ai_detection' ? 'obj' : 'det'}
+                </span>
+              )}
+              <span
+                className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-400 dark:border-emerald-800 flex items-center space-x-0.5"
+                title={`Execution duration: ${nodeExecState.durationMs}ms`}
+              >
+                <Clock className="w-2.5 h-2.5" />
+                <span>{nodeExecState.durationMs}ms</span>
+              </span>
+            </div>
           ) : isFailed ? (
             <span
               className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-950/80 dark:text-rose-400 dark:border-rose-800 flex items-center space-x-0.5"

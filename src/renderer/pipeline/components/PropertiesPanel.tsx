@@ -14,6 +14,10 @@ import {
   Activity,
   Layers,
   Unlink,
+  Target,
+  Brain,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { PortDefinition } from '@/shared/contracts';
 
@@ -48,8 +52,19 @@ export const PropertiesPanel: React.FC = () => {
     return DEFAULT_PANEL_WIDTH;
   });
   const [isResizing, setIsResizing] = useState(false);
+  const [copiedDetJson, setCopiedDetJson] = useState(false);
   const startXRef = useRef<number>(0);
   const startWidthRef = useRef<number>(DEFAULT_PANEL_WIDTH);
+
+  const handleCopyDetJson = useCallback((data: any) => {
+    try {
+      navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      setCopiedDetJson(true);
+      setTimeout(() => setCopiedDetJson(false), 2000);
+    } catch {
+      // Ignore clipboard write errors
+    }
+  }, []);
 
   const handleResizeStart = useCallback(
     (e: React.MouseEvent) => {
@@ -375,13 +390,153 @@ export const PropertiesPanel: React.FC = () => {
               </div>
             )}
 
-            {/* Structured Detection Results */}
-            {execState.structuredResult && (
+            {/* AI Object Detection Results Breakdown */}
+            {Array.isArray(execState.structuredResult?.detections) && (
+              <div className="space-y-1.5 pt-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 flex items-center space-x-1">
+                    <Target className="w-3 h-3 text-purple-600 dark:text-purple-400 shrink-0" />
+                    <span>Detections (Count: {execState.structuredResult.count ?? execState.structuredResult.detections.length})</span>
+                  </span>
+                  {execState.structuredResult.detections.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleCopyDetJson(execState.structuredResult?.detections)}
+                      title="Copy raw detection objects as JSON"
+                      className="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 hover:underline flex items-center space-x-1 transition-colors"
+                    >
+                      {copiedDetJson ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedDetJson ? 'Copied' : 'Copy JSON'}</span>
+                    </button>
+                  )}
+                </div>
+
+                {execState.structuredResult.detections.length > 0 ? (
+                  <div className="max-h-56 overflow-y-auto space-y-1.5 min-w-0 pr-1">
+                    {execState.structuredResult.detections.map((det: any, idx: number) => {
+                      const b = det.bbox || {};
+                      const xmin = typeof b.x_min === 'number' ? b.x_min : 0;
+                      const ymin = typeof b.y_min === 'number' ? b.y_min : 0;
+                      const xmax = typeof b.x_max === 'number' ? b.x_max : 0;
+                      const ymax = typeof b.y_max === 'number' ? b.y_max : 0;
+                      const w = (xmax - xmin).toFixed(1);
+                      const h = (ymax - ymin).toFixed(1);
+                      const confPct = typeof det.confidence === 'number' ? (det.confidence * 100).toFixed(1) : '0';
+
+                      return (
+                        <div
+                          key={det.detection_id || idx}
+                          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2 text-[10px] font-mono space-y-1 shadow-2xs"
+                        >
+                          {/* Row 1: Index, Class Name & Confidence Score */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-1.5 min-w-0">
+                              <span className="text-slate-400 shrink-0 font-bold">#{idx + 1}</span>
+                              <span
+                                className="px-1.5 py-0.5 rounded border font-semibold flex items-center space-x-1 shrink-0"
+                                style={{
+                                  backgroundColor: det.color ? `${det.color}15` : '#6366f115',
+                                  borderColor: det.color ? `${det.color}50` : '#6366f150',
+                                  color: det.color || '#6366f1',
+                                }}
+                              >
+                                {det.color && (
+                                  <span
+                                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: det.color }}
+                                  />
+                                )}
+                                <span className="truncate">{det.class_name || `Class ${det.class_index}`}</span>
+                              </span>
+                            </div>
+                            <span
+                              className={`px-1.5 py-0.5 rounded font-bold shrink-0 ${
+                                (det.confidence ?? 0) >= 0.5
+                                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
+                                  : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-300 dark:border-amber-800'
+                              }`}
+                              title={`Raw Score: ${det.confidence}`}
+                            >
+                              Score: {confPct}% ({Number(det.confidence ?? 0).toFixed(4)})
+                            </span>
+                          </div>
+
+                          {/* Row 2: Bounding Box Coordinates & Dimensions */}
+                          <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[9px] text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/60 rounded p-1.5 border border-slate-100 dark:border-slate-800/60">
+                            <div>
+                              <span>Min [X, Y]: </span>
+                              <strong className="text-slate-800 dark:text-slate-200">
+                                [{xmin}, {ymin}]
+                              </strong>
+                            </div>
+                            <div className="text-right">
+                              <span>Max [X, Y]: </span>
+                              <strong className="text-slate-800 dark:text-slate-200">
+                                [{xmax}, {ymax}]
+                              </strong>
+                            </div>
+                            <div className="col-span-2 flex items-center justify-between pt-0.5 border-t border-slate-200/50 dark:border-slate-800/50">
+                              <span>Kích thước (W × H):</span>
+                              <span className="text-cyan-600 dark:text-cyan-400 font-semibold">
+                                {w} × {h} px
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 italic">
+                    Không có đối tượng nào vượt ngưỡng Confidence Threshold.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* AI Classification Predictions Breakdown */}
+            {Array.isArray(execState.structuredResult?.predictions) && (
+              <div className="space-y-1.5 pt-1 min-w-0">
+                <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 flex items-center space-x-1">
+                  <Brain className="w-3 h-3 text-purple-600 dark:text-purple-400 shrink-0" />
+                  <span>
+                    Predictions (Top: <strong className="text-purple-600 dark:text-purple-400">{execState.structuredResult.top_prediction || 'None'}</strong>)
+                  </span>
+                </span>
+                <div className="space-y-1 min-w-0">
+                  {execState.structuredResult.predictions.map((pred: any, idx: number) => {
+                    const pct = typeof pred.confidence === 'number' ? (pred.confidence * 100).toFixed(1) : '0';
+                    return (
+                      <div
+                        key={idx}
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-1.5 text-[10px] font-mono space-y-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-700 dark:text-slate-300 font-semibold truncate mr-1">
+                            #{idx + 1} {pred.class_name}
+                          </span>
+                          <span className="text-cyan-600 dark:text-cyan-400 font-bold shrink-0">{pct}%</span>
+                        </div>
+                        <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-cyan-500 h-full rounded-full transition-all"
+                            style={{ width: `${Math.min(100, Math.max(0, Number(pct)))}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Structured Detection Results (Contours / Blobs / Legacy Features) */}
+            {Array.isArray(execState.structuredResult?.items) && (
               <div className="space-y-1.5 pt-1 min-w-0">
                 <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
                   Detected Features (Count: {execState.structuredResult.count ?? 0})
                 </span>
-                {Array.isArray(execState.structuredResult.items) && execState.structuredResult.items.length > 0 ? (
+                {execState.structuredResult.items.length > 0 ? (
                   <div className="max-h-36 overflow-y-auto space-y-1 min-w-0">
                     {execState.structuredResult.items.slice(0, 10).map((item: any, idx: number) => (
                       <div

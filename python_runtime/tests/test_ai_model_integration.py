@@ -20,8 +20,9 @@ from vision_runtime.registry import runtime_registry
 
 client = TestClient(app)
 
-AI_TRAINER_CLASSIFICATION_PKG = Path(r"C:\Project\ai_trainer\export\mobilenet_v3_small_20261028_170820")
-AI_TRAINER_DETECTION_PKG = Path(r"C:\Project\ai_trainer\export\fasterrcnn_mobilenet_v3_large_320_fpn_20261030_133000")
+AI_TRAINER_CLASSIFICATION_PKG = Path(r"C:\Project\ai_trainer\export\mobilenet_v3_small_20261030_164500")
+AI_TRAINER_DETECTION_PKG = Path(r"C:\Project\ai_trainer\export\fasterrcnn_mobilenet_v3_large_320_fpn_20261030_165146")
+AI_TRAINER_YOLO_PKG = Path(r"C:\Project\ai_trainer\export\yolov11_20261031_163255")
 SAMPLE_IMAGE_PATH = Path(r"C:\Project\machine_vision_platform\sample_images\pcb_board.png")
 
 
@@ -304,7 +305,54 @@ def test_07_ai_nodes_in_pipeline_execution(isolated_models_env):
         A.model_registry_service = orig_svc
 
 
-def test_08_model_revalidation_and_deletion(isolated_models_env):
+def test_08_yolo_detection_inference_e2e(isolated_models_env):
+    """Verify importing and inferring on YOLOv11 ONNX model with cxcywh coordinate decoding and NMS."""
+    svc: ModelRegistryService = isolated_models_env["service"]
+    if not AI_TRAINER_YOLO_PKG.exists():
+        pytest.skip("YOLO package not found")
+
+    imported = svc.import_model_package(
+        source_path=str(AI_TRAINER_YOLO_PKG),
+        custom_name="YOLOv11 Defect Detector",
+    )
+    assert imported.id is not None
+    assert imported.architecture == "yolov11"
+
+    import vision_runtime.engine.ai_adapters as A
+    orig_svc = A.model_registry_service
+    A.model_registry_service = svc
+
+    try:
+        defect_img_path = Path(r"C:\Users\admin\Documents\Xước\FPCB_Inspection_20260929_133113.png")
+        if defect_img_path.exists():
+            img_bytes = np.fromfile(str(defect_img_path), dtype=np.uint8)
+            img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
+        else:
+            img = cv2.imread(str(SAMPLE_IMAGE_PATH))
+
+        assert img is not None
+        h, w = img.shape[:2]
+
+        result = ObjectDetectionAdapter.infer(
+            image=img,
+            model_id=imported.id,
+            confidence_threshold=0.25,
+            iou_threshold=0.45,
+        )
+
+        assert result.task_type == "OBJECT_DETECTION"
+        assert result.model_id == imported.id
+        if defect_img_path.exists():
+            assert result.count > 0, "YOLO should detect defects on defect image"
+        for det in result.detections:
+            assert det.class_index != 0
+            assert det.bbox.x_max >= det.bbox.x_min
+            assert det.bbox.y_max >= det.bbox.y_min
+    finally:
+        A.model_registry_service = orig_svc
+
+
+def test_09_model_revalidation_and_deletion(isolated_models_env):
     """Verify re-validation and safe model deletion."""
     svc: ModelRegistryService = isolated_models_env["service"]
     cls_models = svc.list_models(task_type="IMAGE_CLASSIFICATION")

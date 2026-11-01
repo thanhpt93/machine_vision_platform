@@ -204,7 +204,7 @@ class ClassificationAdapter:
 
 
 class ObjectDetectionAdapter:
-    """Inference adapter for Object Detection ONNX models (Faster R-CNN architecture)."""
+    """Inference adapter for Object Detection ONNX models (YOLO & Faster R-CNN architectures)."""
 
     @classmethod
     def infer(
@@ -290,7 +290,23 @@ class ObjectDetectionAdapter:
             if confidence_threshold > 0.0
             else post_cfg.get("confidence_threshold", 0.5)
         )
-        effective_iou = iou_threshold or post_cfg.get("iou_threshold", 0.5)
+        effective_iou = (
+            iou_threshold
+            if iou_threshold is not None
+            else post_cfg.get("iou_threshold", 0.45)
+        )
+
+        arch = str(model_item.metadata.get("architecture", "")).lower()
+        m_name = str(model_item.name).lower()
+        mid = str(model_id).lower()
+        post_coord_format = str(post_cfg.get("coordinate_format", "")).lower()
+
+        is_yolo = (
+            "yolo" in arch
+            or "yolo" in m_name
+            or "yolo" in mid
+            or post_coord_format in ("cxcywh", "xywh", "yolo")
+        )
 
         boxes_list: List[List[float]] = []
         labels_list: List[int] = []
@@ -305,8 +321,8 @@ class ObjectDetectionAdapter:
             lbl_idx = int(labels_raw[i])
             cls_meta = classes_map.get(lbl_idx)
 
-            # Ignore background class (index 0)
-            if lbl_idx == 0 or (cls_meta and cls_meta.is_background):
+            # Ignore background class (index 0 or flagged as is_background)
+            if (cls_meta and cls_meta.is_background) or (lbl_idx == 0 and (cls_meta is None or cls_meta.is_background)):
                 continue
 
             # Class filter check
@@ -318,18 +334,29 @@ class ObjectDetectionAdapter:
 
             # Scale box to original image coordinates
             bx = boxes_raw[i]
-            x1 = max(0.0, min(float(orig_w), float(bx[0] * scale_x)))
-            y1 = max(0.0, min(float(orig_h), float(bx[1] * scale_y)))
-            x2 = max(0.0, min(float(orig_w), float(bx[2] * scale_x)))
-            y2 = max(0.0, min(float(orig_h), float(bx[3] * scale_y)))
+            if is_yolo:
+                # YOLO format: [cx, cy, w, h] in target_w, target_h coordinates
+                cx, cy, bw, bh = float(bx[0]), float(bx[1]), float(bx[2]), float(bx[3])
+                rx1 = cx - bw / 2.0
+                ry1 = cy - bh / 2.0
+                rx2 = cx + bw / 2.0
+                ry2 = cy + bh / 2.0
+            else:
+                # Standard format: [x1, y1, x2, y2]
+                rx1, ry1, rx2, ry2 = float(bx[0]), float(bx[1]), float(bx[2]), float(bx[3])
+
+            x1 = max(0.0, min(float(orig_w), float(min(rx1, rx2) * scale_x)))
+            y1 = max(0.0, min(float(orig_h), float(min(ry1, ry2) * scale_y)))
+            x2 = max(0.0, min(float(orig_w), float(max(rx1, rx2) * scale_x)))
+            y2 = max(0.0, min(float(orig_h), float(max(ry1, ry2) * scale_y)))
 
             if x2 > x1 and y2 > y1:
                 boxes_list.append([x1, y1, x2, y2])
                 labels_list.append(lbl_idx)
                 scores_list.append(score)
 
-        # Apply external NMS if custom IoU was specified
-        if iou_threshold is not None and boxes_list:
+        # Apply Non-Maximum Suppression (essential for YOLO raw anchors, also safe for pre-NMS models)
+        if boxes_list:
             keep_indices = apply_nms(boxes_list, scores_list, labels_list, effective_iou)
             boxes_list = [boxes_list[i] for i in keep_indices]
             labels_list = [labels_list[i] for i in keep_indices]

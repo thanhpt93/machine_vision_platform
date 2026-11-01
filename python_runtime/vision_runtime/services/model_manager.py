@@ -7,6 +7,8 @@ Manages:
 - Memory management and safe session unloading.
 """
 
+from __future__ import annotations
+
 import os
 import threading
 import multiprocessing
@@ -38,7 +40,7 @@ class ModelManager:
         if getattr(self, "_initialized", False):
             return
 
-        self._sessions: Dict[str, ort.InferenceSession] = {}
+        self._sessions: Dict[str, Any] = {}
         self._session_lock = threading.Lock()
         self._verified_providers: Optional[List[str]] = None
         self._cuda_verified: Optional[bool] = None
@@ -110,7 +112,7 @@ class ModelManager:
         requested_provider: Optional[str] = None,
         intra_op_threads: int = 0,
         inter_op_threads: int = 0,
-    ) -> ort.InferenceSession:
+    ) -> Any:
         """
         Retrieves an active cached session or instantiates a new one.
         Ensures thread-safe initialization and prevents duplicate memory overhead.
@@ -159,7 +161,7 @@ class ModelManager:
 
     def run_inference(
         self,
-        session: ort.InferenceSession,
+        session: Any,
         input_feed: Dict[str, np.ndarray],
         output_names: Optional[List[str]] = None,
     ) -> List[np.ndarray]:

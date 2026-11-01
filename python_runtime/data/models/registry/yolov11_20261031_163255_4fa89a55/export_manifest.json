@@ -1,0 +1,31 @@
+{
+  "package_name": "yolov11_20261031_163255",
+  "task_type": "OBJECT_DETECTION",
+  "exported_files": {
+    "model.onnx": {
+      "sha256": "28eaf48e5b47851723ae062f4180a15e8e8512f5d2389e227b7983157a84155f",
+      "size_bytes": 10439944
+    },
+    "labels.json": {
+      "sha256": "bbe02cbc3891cf268fd4e5bbcdd6c38919a3552bf2d97eaefc467d3f603a6934",
+      "size_bytes": 494
+    },
+    "preprocessing.json": {
+      "sha256": "679fd35259cb429bbf2ec189aec2c47746d217cb12aabc3506337ec970cae73f",
+      "size_bytes": 314
+    },
+    "postprocessing.json": {
+      "sha256": "0c43301723741d337f6f416c4377afb2d111e88e5e993770d2de2b4aecc89a9b",
+      "size_bytes": 398
+    },
+    "validation_report.json": {
+      "sha256": "8a20a106697cdf31a305c1d9c2671822e57aeebb5975e988b44154d016f1e5f3",
+      "size_bytes": 836
+    },
+    "model_metadata.json": {
+      "sha256": "505a1cce1faf87e047448b44f33be7e461a33a3ea04e44abd13af74a6bc1919e",
+      "size_bytes": 1749
+    }
+  },
+  "verified_with_inference": true
+}
