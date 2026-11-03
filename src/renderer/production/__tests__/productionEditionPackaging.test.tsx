@@ -143,7 +143,7 @@ describe('Phase 3: Production Edition Packaging & Capability Restrictions', () =
 
     // Verify Developer Mode header tabs are NOT rendered in Production Edition
     expect(screen.queryByTestId('mode-tab-editor')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('mode-tab-production')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mode-tab-models')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mode-tab-diagnostics')).not.toBeInTheDocument();
 
     // Verify "Switch to Developer Mode" button is NOT rendered in Production Edition sidebar
@@ -197,7 +197,7 @@ describe('Phase 3: Production Edition Packaging & Capability Restrictions', () =
 
     await waitFor(() => {
       expect(screen.getByTestId('mode-tab-editor')).toBeInTheDocument();
-      expect(screen.getByTestId('mode-tab-production')).toBeInTheDocument();
+      expect(screen.getByTestId('mode-tab-models')).toBeInTheDocument();
       expect(screen.getByTestId('mode-tab-diagnostics')).toBeInTheDocument();
     });
 

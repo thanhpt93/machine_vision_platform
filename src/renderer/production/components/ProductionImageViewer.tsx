@@ -66,9 +66,15 @@ export const ProductionImageViewer: React.FC<ProductionImageViewerProps> = ({
         [...previewNodeEntries]
           .reverse()
           .find((n) =>
-            ['result_viewer', 'inspection_result_viewer', 'draw_measurement', 'image_overlay', 'circle_measurement'].includes(
-              n.node_type
-            )
+            [
+              'result_viewer',
+              'inspection_result_viewer',
+              'draw_measurement',
+              'image_overlay',
+              'circle_measurement',
+              'ai_detection',
+              'ai_classification',
+            ].includes(n.node_type)
           ) || previewNodeEntries[previewNodeEntries.length - 1];
 
       setSelectedNodeId(preferred.node_id);

@@ -92,6 +92,7 @@ export interface PipelineStoreState {
   updateNodeName: (nodeId: string, name: string) => void;
   updateNodeConfig: (nodeId: string, partialConfig: Record<string, any>) => void;
   deleteNode: (nodeId: string) => void;
+  deleteNodes: (nodeIds: string[]) => void;
   deleteEdge: (edgeId: string) => void;
   updatePipelineMeta: (meta: Partial<{ name: string; description: string }>) => void;
   setActiveBottomTab: (tab: 'validation' | 'logs' | 'json') => void;
@@ -614,6 +615,34 @@ export const usePipelineStore = create<PipelineStoreState>((set, get) => ({
     });
 
     get().addLog('info', `Deleted node ID "${nodeId}"`);
+  },
+
+  deleteNodes: (nodeIds: string[]) => {
+    if (!nodeIds || nodeIds.length === 0) return;
+    const idSet = new Set(nodeIds);
+
+    const updatedNodes = get().nodes.filter((n) => !idSet.has(n.id));
+    const updatedEdges = get().edges.filter(
+      (e) => !idSet.has(e.source) && !idSet.has(e.target)
+    );
+
+    const { nodeInstances, edgeInstances } = extractPipelineInstances(updatedNodes, updatedEdges);
+    const report = validatePipeline(nodeInstances, edgeInstances);
+
+    set({
+      nodes: updatedNodes,
+      edges: updatedEdges,
+      selectedNodeId:
+        get().selectedNodeId && idSet.has(get().selectedNodeId!) ? null : get().selectedNodeId,
+      lifecycleStatus: 'Draft',
+      isDirty: true,
+      validationReport: report,
+    });
+
+    get().addLog(
+      'info',
+      `Deleted ${nodeIds.length} node(s) via right-click area sweep: ${nodeIds.join(', ')}`
+    );
   },
 
   deleteEdge: (edgeId: string) => {

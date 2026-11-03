@@ -1,21 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
   Eye,
-  Shield,
-  Terminal,
-  Cpu,
   Workflow,
-  Activity,
   Sun,
   Moon,
-  ScanEye,
   Brain,
+  ShieldCheck,
 } from 'lucide-react';
 import { HealthDashboard } from './components/HealthDashboard';
 import { PipelineEditor } from './pipeline/components/PipelineEditor';
 import { ProductionLayout } from './production/components/ProductionLayout';
 import { AiModelRegistry } from './components/AiModelRegistry';
-import { AppInfo } from '../main/preload';
 import { useThemeStore } from './store/themeStore';
 import { useLicenseStore } from './store/licenseStore';
 import { DeploymentMode, isProductionEdition } from '../shared/editionConfig';
@@ -34,7 +29,6 @@ export const App: React.FC<AppProps> = ({
 }) => {
   const isProdEdition = isProductionEdition(deploymentModeOverride);
 
-  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [activeTab, setActiveTab] = useState<'editor' | 'diagnostics' | 'production' | 'models'>(
     isProdEdition ? 'production' : initialTab
   );
@@ -48,13 +42,6 @@ export const App: React.FC<AppProps> = ({
   const openActivationModal = useLicenseStore((state) => state.openActivationModal);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.electronAPI?.getAppInfo) {
-      const infoPromise = window.electronAPI.getAppInfo();
-      if (infoPromise && typeof infoPromise.then === 'function') {
-        infoPromise.then(setAppInfo).catch(() => {});
-      }
-    }
-
     refreshLicenseStatus();
 
     let unsubscribeMenu: (() => void) | undefined;
@@ -101,21 +88,13 @@ export const App: React.FC<AppProps> = ({
               <Eye className="w-4 h-4" />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="text-xs font-bold tracking-tight text-slate-900 dark:text-white uppercase">
-                  Machine Vision Platform
-                </h1>
-                <span className="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded bg-cyan-100 text-cyan-800 border border-cyan-300 dark:bg-cyan-950 dark:text-cyan-400 dark:border-cyan-800">
-                  Phase 3 OpenCV
-                </span>
-                <span className="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded bg-slate-200 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 hidden sm:inline">
-                  .MVP Format
-                </span>
-              </div>
+              <h1 className="text-xs font-bold tracking-tight text-slate-900 dark:text-white uppercase">
+                Machine Vision Platform
+              </h1>
             </div>
           </div>
 
-          {/* Navigation Tabs (Developer Mode + Production Mode Switcher + AI Models) */}
+          {/* Navigation Tabs (Developer Mode) */}
           <nav className="flex items-center space-x-1 bg-slate-100 dark:bg-slate-950/80 p-0.5 rounded-lg border border-slate-200 dark:border-slate-800 transition-colors">
             <button
               type="button"
@@ -144,41 +123,29 @@ export const App: React.FC<AppProps> = ({
               <Brain className="w-3.5 h-3.5" />
               <span>AI Models</span>
             </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('production')}
-              data-testid="mode-tab-production"
-              className={`flex items-center space-x-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all ${
-                activeTab === 'production'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <ScanEye className="w-3.5 h-3.5" />
-              <span>Production Mode</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('diagnostics')}
-              data-testid="mode-tab-diagnostics"
-              className={`flex items-center space-x-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                activeTab === 'diagnostics'
-                  ? 'bg-cyan-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5" />
-              <span>Python Vision Runtime</span>
-            </button>
           </nav>
         </div>
 
-        {/* Right Section: Badges & Theme Toggle */}
-        <div className="flex items-center space-x-3 text-xs">
+        {/* Right Section: License, Diagnostics & Theme Toggle */}
+        <div className="flex items-center space-x-2.5 text-xs">
           {/* License Status Badge */}
           <LicenseStatusBadge />
+
+          {/* Diagnostics Button */}
+          <button
+            type="button"
+            onClick={() => setActiveTab(activeTab === 'diagnostics' ? 'editor' : 'diagnostics')}
+            data-testid="mode-tab-diagnostics"
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors shadow-xs ${
+              activeTab === 'diagnostics'
+                ? 'bg-cyan-600 text-white border-cyan-500 shadow-sm'
+                : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
+            }`}
+            title="View Python Runtime Health Diagnostics"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+            <span className="text-[11px] font-medium hidden md:inline">Diagnostics</span>
+          </button>
 
           {/* Theme Toggle Button (Light/Dark Mode) */}
           <button
@@ -203,19 +170,6 @@ export const App: React.FC<AppProps> = ({
               </>
             )}
           </button>
-
-          <div className="hidden lg:flex items-center space-x-1.5 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 text-[11px]">
-            <Terminal className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
-            <span>Electron: {appInfo?.electronVersion ?? '35.0.0'}</span>
-          </div>
-          <div className="hidden lg:flex items-center space-x-1.5 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 text-[11px]">
-            <Cpu className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-            <span>Arch: {appInfo?.arch ?? 'x64'}</span>
-          </div>
-          <div className="hidden lg:flex items-center space-x-1.5 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 text-[11px]">
-            <Shield className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-            <span>Sandbox: Active</span>
-          </div>
         </div>
       </header>
 

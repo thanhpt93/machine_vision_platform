@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { usePipelineStore } from '../store/pipelineStore';
-import { useThemeStore } from '../../store/themeStore';
 import { runtimeApi } from '../../services/runtimeApi';
 import { NodeLibrary } from './NodeLibrary';
 import { PipelineCanvas } from './PipelineCanvas';
@@ -13,14 +12,11 @@ import {
   Download,
   Upload,
   AlertCircle,
-  ShieldCheck,
   FileCode2,
   Play,
   Loader2,
   CheckCircle2,
   XCircle,
-  Sun,
-  Moon,
   Rocket,
   X,
 } from 'lucide-react';
@@ -50,10 +46,6 @@ export const PipelineEditor: React.FC<PipelineEditorProps> = ({
   const runPipeline = usePipelineStore((state) => state.runPipeline);
   const isExecuting = usePipelineStore((state) => state.isExecuting);
   const executionSummary = usePipelineStore((state) => state.executionSummary);
-
-  // Theme Management
-  const theme = useThemeStore((state) => state.theme);
-  const toggleTheme = useThemeStore((state) => state.toggleTheme);
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [pipelineName, setPipelineName] = useState(pipelineMeta.name);
@@ -433,7 +425,7 @@ export const PipelineEditor: React.FC<PipelineEditorProps> = ({
           </div>
 
           {/* Import / Export MVP */}
-          <div className="flex items-center space-x-1 border-r border-slate-200 dark:border-slate-800 pr-2 hidden sm:flex">
+          <div className="flex items-center space-x-1 hidden sm:flex">
             <button
               type="button"
               onClick={handleImportMvp}
@@ -454,33 +446,6 @@ export const PipelineEditor: React.FC<PipelineEditorProps> = ({
               <span>Export</span>
             </button>
           </div>
-
-          {/* Quick Theme Switcher Button */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="p-1.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 transition-colors"
-            title={theme === 'dark' ? 'Chuyển sang giao diện Sáng' : 'Chuyển sang giao diện Tối'}
-          >
-            {theme === 'dark' ? (
-              <Sun className="w-3.5 h-3.5 text-amber-400" />
-            ) : (
-              <Moon className="w-3.5 h-3.5 text-indigo-500" />
-            )}
-          </button>
-
-          {/* Diagnostics Switcher */}
-          {onOpenDiagnostics && (
-            <button
-              type="button"
-              onClick={onOpenDiagnostics}
-              className="flex items-center space-x-1.5 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs border border-slate-300 dark:border-slate-700 transition-colors"
-              title="View Python Runtime Health Diagnostics"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-              <span className="hidden md:inline">Diagnostics</span>
-            </button>
-          )}
         </div>
       </div>
 

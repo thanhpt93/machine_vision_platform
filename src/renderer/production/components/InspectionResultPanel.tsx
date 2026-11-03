@@ -1,15 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Clock,
-  FileImage,
-  GitBranch,
   AlertTriangle,
-  Ruler,
-  CheckCircle2,
-  XCircle,
   HelpCircle,
-  Hash,
-  Layers,
+  Crosshair,
+  CheckCircle2,
+  Box,
+  Ruler,
 } from 'lucide-react';
 import { InspectionRecord } from '../../types/api';
 import {
@@ -22,9 +19,25 @@ interface InspectionResultPanelProps {
   pipelineName?: string;
 }
 
+interface ExtractedDetection {
+  id: string;
+  className: string;
+  score: number; // 0..1 or 0..100
+  bbox: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    x_min?: number;
+    y_min?: number;
+    x_max?: number;
+    y_max?: number;
+  };
+  color?: string;
+}
+
 export const InspectionResultPanel: React.FC<InspectionResultPanelProps> = ({
   record,
-  pipelineName,
 }) => {
   if (!record) {
     return (
@@ -33,69 +46,173 @@ export const InspectionResultPanel: React.FC<InspectionResultPanelProps> = ({
           <HelpCircle className="w-5 h-5" />
         </div>
         <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-          No Inspection Executed Yet
+          Chưa có lượt kiểm tra
         </h4>
         <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-          Select a released pipeline and an input image, then click{' '}
-          <strong className="text-slate-700 dark:text-slate-200">Run Inspection</strong> to view real
-          OpenCV inspection verdicts and metrology data.
+          Chọn pipeline đã phát hành và ảnh đầu vào, sau đó nhấn{' '}
+          <strong className="text-slate-700 dark:text-slate-200">Run Inspection</strong> để thực thi và xem kết quả phát hiện.
         </p>
       </div>
     );
   }
 
-  const decisions = record.result_data?.decisions || [];
-  const measurementsMap = record.result_data?.measurements || {};
-  const measurementEntries = Object.entries(measurementsMap);
-  const nodeEntries = Object.values(record.node_results || {});
-
   const isFailed = record.execution_status === 'FAILED';
   const outcome = record.inspection_outcome;
 
-  // Banner styling based on semantic rules
+  // Banner styling based on outcome
   const bannerStyle = isFailed
-    ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800'
+    ? 'bg-rose-50/70 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800'
     : outcome === 'OK'
-    ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-800'
+    ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800'
     : outcome === 'NG'
-    ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800'
-    : 'bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700';
+    ? 'bg-rose-50/70 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800'
+    : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800';
+
+  // Extract detections, predict duration, and object count
+  const { detections, predictTimeMs, objectCount, fallbackMeasurements } = useMemo(() => {
+    const list: ExtractedDetection[] = [];
+    let foundPredictMs: number | null = null;
+    let foundCount: number | null = null;
+
+    // Helper to parse detection items
+    const parseRawDetections = (rawList: any[]) => {
+      rawList.forEach((item: any, idx: number) => {
+        const className =
+          item.class_name ||
+          item.className ||
+          item.label ||
+          item.name ||
+          `Class #${item.class_index !== undefined ? item.class_index : idx + 1}`;
+        const score =
+          typeof item.confidence === 'number'
+            ? item.confidence
+            : typeof item.score === 'number'
+            ? item.score
+            : 1.0;
+
+        let bbox = { x: 0, y: 0, w: 0, h: 0, x_min: 0, y_min: 0, x_max: 0, y_max: 0 };
+        if (item.bbox) {
+          if (typeof item.bbox.x_min === 'number') {
+            const x1 = Math.round(item.bbox.x_min);
+            const y1 = Math.round(item.bbox.y_min);
+            const x2 = Math.round(item.bbox.x_max);
+            const y2 = Math.round(item.bbox.y_max);
+            bbox = {
+              x: x1,
+              y: y1,
+              w: Math.max(0, x2 - x1),
+              h: Math.max(0, y2 - y1),
+              x_min: x1,
+              y_min: y1,
+              x_max: x2,
+              y_max: y2,
+            };
+          } else if (Array.isArray(item.bbox) && item.bbox.length === 4) {
+            const [x, y, w, h] = item.bbox.map((v: number) => Math.round(v));
+            bbox = { x, y, w, h, x_min: x, y_min: y, x_max: x + w, y_max: y + h };
+          } else if (typeof item.bbox.x === 'number') {
+            bbox = {
+              x: Math.round(item.bbox.x),
+              y: Math.round(item.bbox.y),
+              w: Math.round(item.bbox.width || item.bbox.w || 0),
+              h: Math.round(item.bbox.height || item.bbox.h || 0),
+            };
+          }
+        }
+
+        list.push({
+          id: item.detection_id || item.id || `det-${idx + 1}`,
+          className,
+          score,
+          bbox,
+          color: item.color,
+        });
+      });
+    };
+
+    // 1. Scan node_results
+    if (record.node_results) {
+      for (const node of Object.values(record.node_results)) {
+        const meta = node.output_metadata || {};
+        const structured = (node as any).structured_result;
+
+        if (meta.inference_time_ms !== undefined && foundPredictMs === null) {
+          foundPredictMs = Number(meta.inference_time_ms);
+        }
+        if (meta.count !== undefined && foundCount === null) {
+          foundCount = Number(meta.count);
+        }
+
+        const rawList =
+          (Array.isArray(meta.detections) ? meta.detections : null) ||
+          (Array.isArray(meta.detections?.detections) ? meta.detections.detections : null) ||
+          (Array.isArray(structured?.detections) ? structured.detections : null);
+
+        if (rawList && rawList.length > 0 && list.length === 0) {
+          parseRawDetections(rawList);
+        }
+      }
+    }
+
+    // 2. Scan measurements in result_data if list is still empty
+    if (list.length === 0 && record.result_data?.measurements) {
+      for (const item of Object.values(record.result_data.measurements)) {
+        const metrics = item.metrics || {};
+        if (metrics.inference_time_ms !== undefined && foundPredictMs === null) {
+          foundPredictMs = Number(metrics.inference_time_ms);
+        }
+        if (metrics.count !== undefined && foundCount === null) {
+          foundCount = Number(metrics.count);
+        }
+
+        const rawList =
+          (Array.isArray(metrics.detections) ? metrics.detections : null) ||
+          (Array.isArray(metrics.detections?.detections) ? metrics.detections.detections : null);
+
+        if (rawList && rawList.length > 0 && list.length === 0) {
+          parseRawDetections(rawList);
+        }
+      }
+    }
+
+    const predictTimeMs = foundPredictMs !== null ? foundPredictMs : record.duration_ms;
+    const objectCount = foundCount !== null ? foundCount : list.length;
+    const measurementsMap = record.result_data?.measurements || {};
+    const fallbackMeasurements = Object.entries(measurementsMap);
+
+    return {
+      detections: list,
+      predictTimeMs,
+      objectCount,
+      fallbackMeasurements,
+    };
+  }, [record]);
 
   return (
-    <div className="space-y-4">
-      {/* Primary Verdict & Execution Status Card */}
-      <div className={`border rounded-xl p-4 shadow-xs ${bannerStyle}`}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-              Inspection Outcome (Decision Verdict)
-            </span>
+    <div className="space-y-3.5">
+      {/* Compact Top Status & Verdict Bar */}
+      <div className={`border rounded-xl p-3 shadow-xs ${bannerStyle}`}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center space-x-2">
             <InspectionOutcomeBadge
               outcome={record.inspection_outcome}
               executionStatus={record.execution_status}
-              size="lg"
+              size="md"
             />
+            <ExecutionStatusBadge status={record.execution_status} size="sm" />
           </div>
 
-          <div className="text-right">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-              Runtime Execution Status
-            </span>
-            <ExecutionStatusBadge status={record.execution_status} size="md" />
-          </div>
+          <span
+            className="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate"
+            title={record.inspection_id}
+          >
+            {record.inspection_id}
+          </span>
         </div>
 
-        {/* Semantic Clarification Note when UNKNOWN or FAILED */}
-        {record.execution_status === 'COMPLETED' && record.inspection_outcome === 'UNKNOWN' && (
-          <p className="mt-2.5 text-[11px] text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-950/60 px-2.5 py-1.5 rounded border border-slate-200 dark:border-slate-800">
-            Pipeline execution completed without errors, but the pipeline does not include an explicit
-            OK/NG decision node. Outcome is reported as <strong>UNKNOWN</strong>.
-          </p>
-        )}
-
-        {/* Error Details if Execution FAILED */}
+        {/* Execution Error Alert if FAILED */}
         {record.error_details && (
-          <div className="mt-3 p-3 rounded-lg bg-rose-100/80 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-200 space-y-1">
+          <div className="mt-2.5 p-2.5 rounded-lg bg-rose-100/90 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-200 space-y-1">
             <div className="flex items-center space-x-1.5 font-semibold text-rose-800 dark:text-rose-300">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>
@@ -110,108 +227,120 @@ export const InspectionResultPanel: React.FC<InspectionResultPanelProps> = ({
         )}
       </div>
 
-      {/* Inspection Metadata Grid */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-3">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center space-x-1.5">
-          <Hash className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-          <span>Inspection Metadata</span>
-        </h4>
-
-        <div className="grid grid-cols-2 gap-2.5 text-xs">
-          <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Inspection ID</span>
-            <span className="font-mono font-semibold text-slate-800 dark:text-slate-200 truncate block">
-              {record.inspection_id}
-            </span>
+      {/* Summary KPI Cards: Thời gian predict & Số lượng object */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {/* Thời gian Predict */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-xs">
+          <div className="flex items-center space-x-1.5 text-slate-500 dark:text-slate-400 mb-1">
+            <Clock className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0" />
+            <span className="text-[11px] font-medium tracking-wide">Thời gian predict</span>
           </div>
-
-          <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
-              Processing Duration
-            </span>
-            <span className="font-mono font-semibold text-blue-600 dark:text-blue-400 flex items-center space-x-1">
-              <Clock className="w-3 h-3" />
-              <span>{record.duration_ms.toFixed(2)} ms</span>
-            </span>
+          <div className="text-lg font-bold font-mono text-blue-600 dark:text-blue-400">
+            {predictTimeMs.toFixed(1)} <span className="text-xs font-normal text-slate-500">ms</span>
           </div>
+        </div>
 
-          <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
-              Pipeline & Version
-            </span>
-            <span className="font-medium text-slate-800 dark:text-slate-200 flex items-center space-x-1 truncate">
-              <GitBranch className="w-3 h-3 text-slate-400 shrink-0" />
-              <span className="truncate">{pipelineName || record.pipeline_id}</span>
-              <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 shrink-0">
-                v{record.release_version}
-              </span>
-            </span>
+        {/* Số lượng Object detect được */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-xs">
+          <div className="flex items-center space-x-1.5 text-slate-500 dark:text-slate-400 mb-1">
+            <Crosshair className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
+            <span className="text-[11px] font-medium tracking-wide">Số lượng object</span>
           </div>
-
-          <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800">
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Input Image</span>
-            <span
-              className="font-mono text-slate-800 dark:text-slate-200 flex items-center space-x-1 truncate"
-              title={record.input_image?.resolved_path}
-            >
-              <FileImage className="w-3 h-3 text-slate-400 shrink-0" />
-              <span className="truncate">{record.input_image?.filename || 'N/A'}</span>
-            </span>
-          </div>
-
-          <div className="col-span-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <span className="text-[10px] text-slate-500 dark:text-slate-400">Started At</span>
-            <span className="font-mono text-[11px] text-slate-700 dark:text-slate-300">
-              {record.started_at ? new Date(record.started_at).toLocaleString() : record.created_at}
-            </span>
+          <div className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
+            {objectCount} <span className="text-xs font-normal text-slate-500">đối tượng</span>
           </div>
         </div>
       </div>
 
-      {/* Decision Rules Breakdown (if any) */}
-      {decisions.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-2.5">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center space-x-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>Decision & Tolerance Verdicts ({decisions.length})</span>
+      {/* Chi tiết Object Detect: Class, Score, Tọa độ vị trí */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-xs space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center space-x-1.5">
+            <Box className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+            <span>Thông tin detect chi tiết</span>
           </h4>
-          <div className="space-y-2">
-            {decisions.map((d) => (
-              <div
-                key={d.node_id}
-                className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs"
-              >
-                <div>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    {d.node_name}
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-400 ml-1.5">
-                    ({d.node_type})
-                  </span>
-                  {d.details?.value !== undefined && d.details?.nominal !== undefined && (
-                    <div className="text-[11px] font-mono text-slate-600 dark:text-slate-400 mt-0.5">
-                      Measured: <strong>{d.details.value}</strong> | Nominal: {d.details.nominal} [
-                      {d.details.min_limit} .. {d.details.max_limit}]
-                    </div>
-                  )}
-                </div>
-                <InspectionOutcomeBadge outcome={d.outcome} size="sm" />
-              </div>
-            ))}
-          </div>
+          <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+            {detections.length} kết quả
+          </span>
         </div>
-      )}
 
-      {/* Metrology & Feature Measurements Returned by Runtime */}
-      {measurementEntries.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center space-x-1.5">
-            <Ruler className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-            <span>Measurements & Inspection Details ({measurementEntries.length})</span>
-          </h4>
+        {detections.length > 0 ? (
+          <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+            {detections.map((det, idx) => {
+              const scorePct = det.score <= 1.0 ? det.score * 100 : det.score;
+              const scoreColor =
+                scorePct >= 80
+                  ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800'
+                  : scorePct >= 50
+                  ? 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800'
+                  : 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800';
 
-          <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
-            {measurementEntries.map(([nodeId, item]) => {
+              return (
+                <div
+                  key={det.id || idx}
+                  className="p-2.5 rounded-lg bg-slate-50/80 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 space-y-1.5 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                >
+                  {/* Row 1: Index, Class name, Score */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center space-x-1.5 min-w-0">
+                      <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-200 dark:bg-slate-800 w-4 h-4 rounded flex items-center justify-center shrink-0">
+                        {idx + 1}
+                      </span>
+                      <span
+                        className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate"
+                        title={det.className}
+                      >
+                        {det.className}
+                      </span>
+                    </div>
+
+                    <span
+                      className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded border ${scoreColor} shrink-0`}
+                    >
+                      {scorePct.toFixed(1)}%
+                    </span>
+                  </div>
+
+                  {/* Row 2: Tọa độ vị trí (Bounding Box) */}
+                  <div className="bg-white dark:bg-slate-900 rounded px-2 py-1.5 border border-slate-200/80 dark:border-slate-800/80">
+                    <div className="text-[10px] uppercase font-mono text-slate-400 mb-0.5">
+                      Tọa độ vị trí [X, Y, W, H]
+                    </div>
+                    <div className="grid grid-cols-4 gap-1 text-center font-mono text-[11px]">
+                      <div className="bg-slate-50 dark:bg-slate-950/60 rounded py-0.5 px-1 border border-slate-100 dark:border-slate-800">
+                        <span className="text-[9px] text-slate-400 block">X</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {det.bbox.x}
+                        </span>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-950/60 rounded py-0.5 px-1 border border-slate-100 dark:border-slate-800">
+                        <span className="text-[9px] text-slate-400 block">Y</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {det.bbox.y}
+                        </span>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-950/60 rounded py-0.5 px-1 border border-slate-100 dark:border-slate-800">
+                        <span className="text-[9px] text-slate-400 block">W</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {det.bbox.w}
+                        </span>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-950/60 rounded py-0.5 px-1 border border-slate-100 dark:border-slate-800">
+                        <span className="text-[9px] text-slate-400 block">H</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {det.bbox.h}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : fallbackMeasurements.length > 0 ? (
+          // Fallback metrology display if this is a traditional measurement inspection without AI detection
+          <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+            {fallbackMeasurements.map(([nodeId, item]) => {
               const scalarEntries = Object.entries(item.metrics || {}).filter(
                 ([, v]) => v !== null && typeof v !== 'object'
               );
@@ -220,10 +349,10 @@ export const InspectionResultPanel: React.FC<InspectionResultPanelProps> = ({
               return (
                 <div
                   key={nodeId}
-                  className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2"
+                  className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-1.5"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
                       {item.node_name}
                     </span>
                     <span className="text-[10px] font-mono text-blue-600 dark:text-blue-400">
@@ -233,7 +362,7 @@ export const InspectionResultPanel: React.FC<InspectionResultPanelProps> = ({
 
                   {scalarEntries.length > 0 && (
                     <div className="grid grid-cols-2 gap-1.5 text-[11px] font-mono">
-                      {scalarEntries.slice(0, 10).map(([k, v]) => (
+                      {scalarEntries.slice(0, 6).map(([k, v]) => (
                         <div
                           key={k}
                           className="bg-white dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-800 flex justify-between items-center overflow-hidden"
@@ -264,7 +393,7 @@ export const InspectionResultPanel: React.FC<InspectionResultPanelProps> = ({
                             C{idx + 1} ({c.label || `#${idx + 1}`}):
                           </span>
                           <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                            D={c.diameter} {c.unit} (R={c.radius} {c.unit})
+                            D={c.diameter} {c.unit}
                           </span>
                         </div>
                       ))}
@@ -274,41 +403,12 @@ export const InspectionResultPanel: React.FC<InspectionResultPanelProps> = ({
               );
             })}
           </div>
-        </div>
-      )}
-
-      {/* Node Execution Timing Breakdown */}
-      {nodeEntries.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-2.5">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center space-x-1.5">
-            <Layers className="w-3.5 h-3.5 text-slate-500" />
-            <span>Pipeline Node Execution Timings ({nodeEntries.length})</span>
-          </h4>
-          <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
-            {nodeEntries.map((n) => (
-              <div
-                key={n.node_id}
-                className="flex items-center justify-between px-2.5 py-1.5 rounded bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-[11px] font-mono"
-              >
-                <div className="flex items-center space-x-2 truncate">
-                  {n.status === 'completed' ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  ) : n.status === 'failed' ? (
-                    <XCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                  ) : (
-                    <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  )}
-                  <span className="text-slate-800 dark:text-slate-200 truncate">{n.node_id}</span>
-                  <span className="text-slate-400">({n.node_type})</span>
-                </div>
-                <span className="text-slate-600 dark:text-slate-400 shrink-0">
-                  {n.duration_ms.toFixed(2)} ms
-                </span>
-              </div>
-            ))}
+        ) : (
+          <div className="p-4 text-center text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/40 rounded-lg border border-dashed border-slate-200 dark:border-slate-800">
+            0 đối tượng được phát hiện
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

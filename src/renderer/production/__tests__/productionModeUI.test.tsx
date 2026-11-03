@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import App from '../../App';
+import { InspectionResultPanel } from '../components/InspectionResultPanel';
 import { useProductionStore } from '../store/productionStore';
 import { runtimeApi } from '../../services/runtimeApi';
 import {
@@ -226,12 +227,7 @@ describe('NOVA Production Mode UI', () => {
   });
 
   it('1. switches cleanly between Developer Mode and Production Mode without exposing graph editing in Production Mode', async () => {
-    render(<App initialTab="editor" />);
-    expect(screen.getByText('Node Library')).toBeInTheDocument();
-
-    // Switch to Production Mode
-    const prodTabBtn = screen.getByTestId('mode-tab-production');
-    fireEvent.click(prodTabBtn);
+    render(<App initialTab="production" />);
 
     await waitFor(() => {
       expect(screen.getByTestId('production-mode-layout')).toBeInTheDocument();
@@ -240,6 +236,14 @@ describe('NOVA Production Mode UI', () => {
     // Graph editor Node Library must NOT be present in Production Mode
     expect(screen.queryByText('Node Library')).not.toBeInTheDocument();
     expect(screen.getByText('1. Released Pipeline Selection')).toBeInTheDocument();
+
+    // Switch back to Developer Mode
+    const switchBackBtn = screen.getByText(/Switch to Developer Mode/i);
+    fireEvent.click(switchBackBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Node Library')).toBeInTheDocument();
+    });
   });
 
   it('2. lists only eligible released pipelines in Inspection selector and hides archived releases', async () => {
@@ -471,5 +475,60 @@ describe('NOVA Production Mode UI', () => {
     // Click Fit button
     fireEvent.click(screen.getByTitle('Fit to screen / Reset zoom'));
     expect(screen.getByTitle('Current zoom level')).toHaveTextContent('FIT');
+  });
+
+  it('7. renders streamlined InspectionResultPanel with prediction time, object count, and detailed detections', () => {
+    const mockRecord = createMockInspectionRecord({
+      inspection_id: 'insp_ai_detect_1',
+      execution_status: 'COMPLETED',
+      inspection_outcome: 'OK',
+      duration_ms: 24.5,
+      node_results: {
+        n_ai: {
+          node_id: 'n_ai',
+          node_type: 'ai_detection',
+          status: 'completed',
+          duration_ms: 18.2,
+          has_preview: true,
+          output_metadata: {
+            task_type: 'OBJECT_DETECTION',
+            count: 2,
+            inference_time_ms: 14.8,
+            detections: [
+              {
+                detection_id: 'det_1',
+                class_name: 'BottleCap',
+                confidence: 0.985,
+                bbox: { x_min: 120, y_min: 80, x_max: 240, y_max: 200 },
+              },
+              {
+                detection_id: 'det_2',
+                class_name: 'DefectScuff',
+                confidence: 0.872,
+                bbox: { x_min: 150, y_min: 100, x_max: 180, y_max: 130 },
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    render(<InspectionResultPanel record={mockRecord} />);
+
+    expect(screen.getByText('Thời gian predict')).toBeInTheDocument();
+    expect(screen.getByText(/14.8/)).toBeInTheDocument();
+    expect(screen.getByText('Số lượng object')).toBeInTheDocument();
+    expect(screen.getByText('2 kết quả')).toBeInTheDocument();
+    expect(screen.getByText('đối tượng')).toBeInTheDocument();
+    expect(screen.getByText('Thông tin detect chi tiết')).toBeInTheDocument();
+    expect(screen.getByText('BottleCap')).toBeInTheDocument();
+    expect(screen.getByText('98.5%')).toBeInTheDocument();
+    expect(screen.getByText('DefectScuff')).toBeInTheDocument();
+    expect(screen.getByText('87.2%')).toBeInTheDocument();
+    expect(screen.getAllByText('Tọa độ vị trí [X, Y, W, H]').length).toBe(2);
+
+    // Unnecessary clutter must NOT be present
+    expect(screen.queryByText('Pipeline Node Execution Timings')).not.toBeInTheDocument();
+    expect(screen.queryByText('Inspection Metadata')).not.toBeInTheDocument();
   });
 });

@@ -1,0 +1,94 @@
+{
+  "archived_at": null,
+  "checksum": "ecb69bcab53f9ae4763c81d12d23b1ab551a4c6dd23764d4fd79ab3a52745877",
+  "created_at": "2026-11-03T14:30:59.404484Z",
+  "is_active": false,
+  "node_versions": {
+    "ai_detection": "1.0.0",
+    "image_file": "1.0.0",
+    "result_viewer": "1.0.0"
+  },
+  "pipeline": {
+    "createdAt": "2026-11-01T13:58:15.064Z",
+    "description": "Automated circle dimensional measurement: Bottle Cap -> Crop -> Grayscale -> Threshold -> Circle Measurement -> Dimension Overlay (on Grayscale) -> Viewer",
+    "edges": [
+      {
+        "id": "edge_node_image_file_odj8asq_image_to_node_ai_detection_mx8iyq7_image_in",
+        "sourceNodeId": "node_image_file_odj8asq",
+        "sourcePortId": "image",
+        "targetNodeId": "node_ai_detection_mx8iyq7",
+        "targetPortId": "image_in"
+      },
+      {
+        "id": "edge_node_ai_detection_mx8iyq7_image_out_to_node_result_viewer_6nbdx40_image_in",
+        "sourceNodeId": "node_ai_detection_mx8iyq7",
+        "sourcePortId": "image_out",
+        "targetNodeId": "node_result_viewer_6nbdx40",
+        "targetPortId": "image_in"
+      },
+      {
+        "id": "edge_node_ai_detection_mx8iyq7_detections_to_node_result_viewer_6nbdx40_detections_in",
+        "sourceNodeId": "node_ai_detection_mx8iyq7",
+        "sourcePortId": "detections",
+        "targetNodeId": "node_result_viewer_6nbdx40",
+        "targetPortId": "detections_in"
+      }
+    ],
+    "fileFormat": "MVP_PIPELINE",
+    "id": "pipeline_3ko60a0",
+    "metadata": {},
+    "name": "FPCB Detection",
+    "nodes": [
+      {
+        "config": {
+          "filePath": "E:\\IMAGE_DL\\Hwaseung_FPCB\\thiếu-20261002T013425Z-1-001\\thiếu\\FPCB_Inspection_20260929_134214.png"
+        },
+        "id": "node_image_file_odj8asq",
+        "name": "Image File",
+        "nodeType": "image_file",
+        "position": {
+          "x": 270.0,
+          "y": 690.0
+        }
+      },
+      {
+        "config": {
+          "showHistogram": false,
+          "showOverlay": true,
+          "title": "Main Inspection Output",
+          "zoomLevel": 1
+        },
+        "id": "node_result_viewer_6nbdx40",
+        "name": "Result Viewer",
+        "nodeType": "result_viewer",
+        "position": {
+          "x": 990.0,
+          "y": 795.0
+        }
+      },
+      {
+        "config": {
+          "confidenceThreshold": 0.5,
+          "drawBoxes": true,
+          "iouThreshold": 0.5,
+          "maxDetections": 100,
+          "modelId": "yolov11_20261031_163255_4fa89a55"
+        },
+        "id": "node_ai_detection_mx8iyq7",
+        "name": "AI Object Detection",
+        "nodeType": "ai_detection",
+        "position": {
+          "x": 600.0,
+          "y": 675.0
+        }
+      }
+    ],
+    "schemaVersion": "1.0.0",
+    "updatedAt": "2026-11-03T14:30:59.398Z"
+  },
+  "pipeline_id": "pipeline_3ko60a0",
+  "release_notes": "Released from Pipeline Editor (FPCB Detection)",
+  "release_version": "1.0.1",
+  "schema_version": "1.0.0",
+  "status": "Released"
+}

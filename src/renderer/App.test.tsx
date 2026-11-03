@@ -25,15 +25,17 @@ describe('App Component', () => {
     };
   });
 
-  it('renders application title, phase badges, navigation tabs and theme toggle', async () => {
+  it('renders application title, navigation tabs, diagnostics and theme toggle', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Connection refused'));
 
     render(<App initialTab="editor" />);
     expect(screen.getByText('Machine Vision Platform')).toBeInTheDocument();
-    expect(screen.getByText('Phase 3 OpenCV')).toBeInTheDocument();
-    expect(screen.getAllByText('.MVP Format').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText('Phase 3 OpenCV')).not.toBeInTheDocument();
     expect(screen.getByText('Pipeline Editor')).toBeInTheDocument();
-    expect(screen.getByText('Python Vision Runtime')).toBeInTheDocument();
+    expect(screen.getByText('AI Models')).toBeInTheDocument();
+    expect(screen.getByText('Diagnostics')).toBeInTheDocument();
+    expect(screen.queryByText('Production Mode')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Electron:/i)).not.toBeInTheDocument();
   });
 
   it('toggles light/dark theme when theme button is clicked', async () => {

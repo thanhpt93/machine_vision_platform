@@ -166,6 +166,7 @@ def ai_detection_handler(
         "count": result.count,
         "inference_time_ms": result.execution.inference_time_ms,
         "provider": result.execution.provider,
+        "detections": [d.model_dump() for d in result.detections],
     }
 
     return outputs, metadata
