@@ -80,7 +80,7 @@ export const LicenseActivationModal: React.FC = () => {
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                NOVA License Activation
+                INVI License Activation
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 Target Edition:{' '}
@@ -147,9 +147,9 @@ export const LicenseActivationModal: React.FC = () => {
             <div className="space-y-3">
               <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
                 Import a digitally signed license artifact issued by{' '}
-                <strong>NOVA License Management</strong>. Supported artifact extensions include{' '}
+                <strong>INVI License Management</strong>. Supported artifact extensions include{' '}
                 <code className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[11px]">
-                  .novalic.json
+                  .invilic.json
                 </code>
                 ,{' '}
                 <code className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[11px]">
@@ -192,7 +192,7 @@ export const LicenseActivationModal: React.FC = () => {
                       Select Signed License Artifact
                     </div>
                     <div className="text-[11px] text-slate-500">
-                      Cryptographically verified against the trusted NOVA Ed25519 public key.
+                      Cryptographically verified against the trusted INVI Ed25519 public key.
                     </div>
                   </div>
                   <button

@@ -22,14 +22,14 @@ describe('License UI & State Management Components', () => {
         success: true,
         filePath: 'C:/licenses/sample.novalic.json',
         content: JSON.stringify({
-          artifact_format: 'NOVA-LICENSE-ENVELOPE-V1',
-          key_id: 'nova-key-2026-01',
+          artifact_format: 'INVI-LICENSE-ENVELOPE-V1',
+          key_id: 'invi-key-2026-01',
           algorithm: 'Ed25519',
           payload: {
             license_id: 'lic-1234',
             license_number: 'NVL-2026-TEST',
             customer_name: 'Acme Robotics',
-            product_id: 'NOVA-MV-PROD',
+            product_id: 'INVI-MV-PROD',
             edition: 'production',
             features: ['runtime_execution', 'recipe_management'],
             license_type: 'SUBSCRIPTION',
@@ -214,7 +214,7 @@ describe('License UI & State Management Components', () => {
       render(<LicenseActivationModal />);
 
       expect(screen.getByTestId('license-activation-modal')).toBeInTheDocument();
-      expect(screen.getByText('NOVA License Activation')).toBeInTheDocument();
+      expect(screen.getByText('INVI License Activation')).toBeInTheDocument();
 
       const selectBtn = screen.getByTestId('select-license-file-btn');
       await act(async () => {
@@ -264,7 +264,7 @@ describe('License UI & State Management Components', () => {
         license_number: 'NVL-2026-PROD-FULL',
         customer_name: 'Global Auto Components',
         customer_code: 'GAC-001',
-        product_id: 'NOVA-MV-PROD',
+        product_id: 'INVI-MV-PROD',
         edition: 'production',
         features: ['runtime_execution', 'recipe_management', 'plc_communication'],
         license_type: 'SUBSCRIPTION',
@@ -275,7 +275,7 @@ describe('License UI & State Management Components', () => {
           max_concurrent_inspections: 2,
           total_inspection_quota: 100000,
         },
-        key_id: 'nova-key-2026-01',
+        key_id: 'invi-key-2026-01',
         signature_algorithm: 'Ed25519',
         signature_verified: true,
         running_edition: 'production',
@@ -296,7 +296,7 @@ describe('License UI & State Management Components', () => {
       expect(screen.getByText('NVL-2026-PROD-FULL')).toBeInTheDocument();
       expect(screen.getByText('runtime_execution')).toBeInTheDocument();
       expect(screen.getByText('plc_communication')).toBeInTheDocument();
-      expect(screen.getByText('nova-key-2026-01')).toBeInTheDocument();
+      expect(screen.getByText(/invi-key-2026-01|nova-key-2026-01/)).toBeInTheDocument();
       expect(screen.getByText(/Ed25519/)).toBeInTheDocument();
 
       // Click "Replace License" closes details and opens activation modal

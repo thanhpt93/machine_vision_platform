@@ -56,7 +56,9 @@ def get_official_dev_key() -> Optional[Ed25519PrivateKey]:
             pass
     if _MOCK_DEV_KEY is None:
         _MOCK_DEV_KEY, _MOCK_DEV_PUB = generate_test_keypair()
+        DEFAULT_TRUSTED_PUBLIC_KEYS["invi-key-2026-01"] = _MOCK_DEV_PUB
         DEFAULT_TRUSTED_PUBLIC_KEYS["nova-key-2026-01"] = _MOCK_DEV_PUB
+        license_service.register_trusted_public_key("invi-key-2026-01", _MOCK_DEV_PUB)
         license_service.register_trusted_public_key("nova-key-2026-01", _MOCK_DEV_PUB)
     return _MOCK_DEV_KEY
 
@@ -65,7 +67,7 @@ def create_signed_license_artifact(
     edition: str = "developer",
     product_id: str = PRODUCT_ID_MVP,
     license_type: str = "SUBSCRIPTION",
-    key_id: str = "nova-key-2026-01",
+    key_id: str = "invi-key-2026-01",
     private_key: Optional[Ed25519PrivateKey] = None,
     is_expired: bool = False,
     is_not_yet_valid: bool = False,
@@ -79,7 +81,7 @@ def create_signed_license_artifact(
 ) -> Dict[str, Any]:
     """Creates a cryptographically signed license envelope fixture."""
     if private_key is None:
-        if key_id == "nova-key-2026-01":
+        if key_id in ("invi-key-2026-01", "nova-key-2026-01"):
             dev_key = get_official_dev_key()
             if dev_key is not None:
                 private_key = dev_key

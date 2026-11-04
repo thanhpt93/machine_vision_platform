@@ -1,7 +1,7 @@
 {
-  "artifact_format": "NOVA-LICENSE-ENVELOPE-V1",
+  "artifact_format": "INVI-LICENSE-ENVELOPE-V1",
   "algorithm": "Ed25519",
-  "key_id": "nova-key-2026-01",
+  "key_id": "invi-key-2026-01",
   "payload": {
     "customer_code": "LOCAL-SMARTCITY",
     "customer_id": "28901393-1ec8-4f5e-a3d3-b2a2b3aa5e79",
@@ -32,9 +32,9 @@
       "template_matching"
     ],
     "issued_at": "2026-11-01T13:30:17Z",
-    "key_id": "nova-key-2026-01",
+    "key_id": "invi-key-2026-01",
     "license_id": "ce07bc33-a065-4d71-b90f-35a73a0abe04",
-    "license_number": "NOVA-2026-000003",
+    "license_number": "INVI-2026-000003",
     "license_type": "SUBSCRIPTION",
     "limits": {
       "max_concurrent_inspections": 4,
@@ -42,8 +42,8 @@
       "total_inspection_quota": -1
     },
     "not_before": "2026-11-01T13:30:17Z",
-    "product_id": "NOVA-MVP",
+    "product_id": "INVI-MVP",
     "schema_version": "1.0"
   },
-  "signature": "ky27DApko8pVTFec/MDynUX0MNgpC7CDWcIwdTo9tBHiKZKGRcVs8SsHbAINjYYQ7p/2AbkqzKn1Xqqab1B0Bw=="
+  "signature": "IxQY2lh6Au1ptRFglOdgcBf9bKFj1w6jeYvhY2BB7AIzvMQW59faA8f8fF0cVdCMaMCb/hF/zStqNGxGcYX7CQ=="
 }

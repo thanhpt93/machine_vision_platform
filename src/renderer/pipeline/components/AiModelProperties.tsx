@@ -80,7 +80,7 @@ export const AiModelProperties: React.FC<AiModelPropertiesProps> = ({
               No {taskType === 'IMAGE_CLASSIFICATION' ? 'Classification' : 'Object Detection'} models imported.
             </p>
             <p className="text-[10px] text-slate-500">
-              Go to the <strong className="text-purple-600 dark:text-purple-400">AI Models</strong> tab to import an exported package from NOVA AI Trainer.
+              Go to the <strong className="text-purple-600 dark:text-purple-400">AI Models</strong> tab to import an exported package from INVI AI Trainer.
             </p>
           </div>
         ) : (

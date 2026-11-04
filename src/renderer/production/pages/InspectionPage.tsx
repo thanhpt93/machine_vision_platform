@@ -245,7 +245,7 @@ export const InspectionPage: React.FC<InspectionPageProps> = ({
                   ) : (
                     <>
                       No released pipeline snapshots were found in the workstation repository. Deploy
-                      a validated release package from NOVA Developer Edition and click Refresh.
+                      a validated release package from INVI Developer Edition and click Refresh.
                     </>
                   )}
                 </p>

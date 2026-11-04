@@ -78,8 +78,9 @@ export interface ElectronAPI {
 // Only `electron` and built-in/polyfilled globals are permitted in sandboxed preload.
 function resolvePreloadDeploymentMode(): DeploymentMode {
   try {
-    if (typeof process !== 'undefined' && process?.env?.NOVA_DEPLOYMENT_MODE) {
-      const envMode = process.env.NOVA_DEPLOYMENT_MODE.trim().toLowerCase();
+    const rawMode = process?.env?.INVI_DEPLOYMENT_MODE || process?.env?.NOVA_DEPLOYMENT_MODE;
+    if (typeof process !== 'undefined' && rawMode) {
+      const envMode = rawMode.trim().toLowerCase();
       if (envMode === 'production') return 'production';
       if (envMode === 'developer') return 'developer';
     }

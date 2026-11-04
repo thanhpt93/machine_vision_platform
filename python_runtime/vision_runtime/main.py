@@ -9,9 +9,10 @@ from vision_runtime.api.pipeline import router as pipeline_router
 from vision_runtime.api.production import router as production_router
 from vision_runtime.api.releases import router as releases_router
 from vision_runtime.api.models import router as models_router
+from vision_runtime.api.i18n import router as i18n_router
 from vision_runtime.config import settings
 
-_DEPLOYMENT_MODE = os.environ.get("NOVA_DEPLOYMENT_MODE", "developer").strip().lower()
+_DEPLOYMENT_MODE = (os.environ.get("INVI_DEPLOYMENT_MODE") or os.environ.get("NOVA_DEPLOYMENT_MODE") or "developer").strip().lower()
 _IS_PRODUCTION_EDITION = _DEPLOYMENT_MODE == "production"
 
 app = FastAPI(
@@ -36,6 +37,7 @@ app.include_router(license_router)
 app.include_router(production_router)
 app.include_router(releases_router)
 app.include_router(models_router)
+app.include_router(i18n_router)
 
 # Only register mutable Pipeline Editor execution/draft compilation router in Developer Mode
 if not _IS_PRODUCTION_EDITION:
@@ -52,17 +54,8 @@ async def root():
         "health": "/health",
         "license_api": "/api/license",
         "models_api": "/api/models",
+        "i18n_api": "/api/i18n",
         "pipeline_api": None if _IS_PRODUCTION_EDITION else "/api/pipeline",
         "releases_api": "/api/releases",
         "production_api": "/api/production",
     }
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "vision_runtime.main:app",
-        host=settings.host,
-        port=settings.port,
-        reload=settings.debug,
-    )

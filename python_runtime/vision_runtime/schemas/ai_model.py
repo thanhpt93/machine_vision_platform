@@ -71,7 +71,7 @@ class ModelCatalogItem(BaseModel):
     input_size: List[int]
     num_classes: int
     classes: List[ModelClassInfo]
-    source: str = "NOVA AI Trainer"
+    source: str = "INVI AI Trainer"
     status: str = "valid"  # "valid", "invalid", "unsupported"
     import_date: str
     file_size_bytes: int

@@ -1,4 +1,4 @@
-"""FastAPI Router for NOVA Machine Vision Platform License Management.
+"""FastAPI Router for INVI Machine Vision Platform License Management.
 
 Endpoints:
 - GET  /api/license/status

@@ -1,7 +1,7 @@
-"""Shared Python License Validator & Storage Service for NOVA Machine Vision Platform.
+"""Shared Python License Validator & Storage Service for INVI Machine Vision Platform.
 
 Implements the exact cryptographic verification, canonical RFC 8785 serialization,
-and public-key trust model defined by NOVA License Management.
+and public-key trust model defined by INVI License Management.
 Contains ONLY public key material; never embeds private signing keys.
 """
 
@@ -30,16 +30,16 @@ from vision_runtime.models.license import (
     SignedLicenseEnvelopeModel,
 )
 
-ARTIFACT_FORMAT_V1 = "NOVA-LICENSE-ENVELOPE-V1"
+ARTIFACT_FORMAT_V1 = "INVI-LICENSE-ENVELOPE-V1"
 ALGORITHM_ED25519 = "Ed25519"
 PAYLOAD_SCHEMA_VERSION = "1.0"
-PRODUCT_ID_MVP = "NOVA-MVP"
+PRODUCT_ID_MVP = "INVI-MVP"
 
 # Maximum allowable license artifact file size (1 MB)
 MAX_LICENSE_FILE_BYTES = 1024 * 1024
 
-# Official Active Public Keys trusted by NOVA Machine Vision Platform
-# Official Active Public Keys trusted by NOVA Machine Vision Platform
+# Official Active Public Keys trusted by INVI Machine Vision Platform
+# Official Active Public Keys trusted by INVI Machine Vision Platform
 PRIMARY_NOVA_KEY_2026_01 = (
     "-----BEGIN PUBLIC KEY-----\n"
     "MCowBQYDK2VwAyEAzOCzzS3O49MXJ39H+jQOynN3TIrcC1qrfEvNAqw3a0k=\n"
@@ -52,10 +52,12 @@ LEGACY_NOVA_KEY_2026_01 = (
 )
 
 DEFAULT_TRUSTED_PUBLIC_KEYS: Dict[str, str] = {
+    "invi-key-2026-01": PRIMARY_NOVA_KEY_2026_01,
     "nova-key-2026-01": PRIMARY_NOVA_KEY_2026_01,
 }
 
 FALLBACK_TRUSTED_PUBLIC_KEYS: Dict[str, List[str]] = {
+    "invi-key-2026-01": [PRIMARY_NOVA_KEY_2026_01, LEGACY_NOVA_KEY_2026_01],
     "nova-key-2026-01": [PRIMARY_NOVA_KEY_2026_01, LEGACY_NOVA_KEY_2026_01],
 }
 
@@ -177,11 +179,17 @@ class LicenseService:
 
     @property
     def active_license_path(self) -> Path:
-        return self.storage_dir / "active_license.novalic.json"
+        primary = self.storage_dir / "active_license.invilic.json"
+        if primary.is_file():
+            return primary
+        legacy = self.storage_dir / "active_license.novalic.json"
+        if legacy.is_file():
+            return legacy
+        return primary
 
     def get_running_edition(self) -> str:
         """Determines the current running application edition ('developer' or 'production')."""
-        mode = os.environ.get("NOVA_DEPLOYMENT_MODE", "developer").strip().lower()
+        mode = (os.environ.get("INVI_DEPLOYMENT_MODE") or os.environ.get("NOVA_DEPLOYMENT_MODE") or "developer").strip().lower()
         return "production" if mode == "production" else "developer"
 
     def register_trusted_public_key(self, key_id: str, pem: str) -> None:
@@ -191,8 +199,8 @@ class LicenseService:
 
     def _load_additional_trusted_keys(self) -> None:
         """Loads additional trusted public keys from environment or keys directory if present."""
-        env_pem = os.environ.get("NOVA_PUBLIC_KEY_PEM")
-        env_key_id = os.environ.get("NOVA_PUBLIC_KEY_ID")
+        env_pem = (os.environ.get("INVI_PUBLIC_KEY_PEM") or os.environ.get("NOVA_PUBLIC_KEY_PEM"))
+        env_key_id = (os.environ.get("INVI_PUBLIC_KEY_ID") or os.environ.get("NOVA_PUBLIC_KEY_ID"))
         if env_pem and env_key_id:
             try:
                 self.register_trusted_public_key(env_key_id, env_pem)
@@ -437,7 +445,7 @@ class LicenseService:
 
         # 1. Product check
         product_id = payload.get("product_id")
-        if product_id != PRODUCT_ID_MVP:
+        if product_id not in (PRODUCT_ID_MVP, "NOVA-MVP"):
             return LicenseStatusResponse(
                 status=LicenseStatusEnum.INVALID_PRODUCT,
                 is_valid=False,
@@ -454,7 +462,7 @@ class LicenseService:
                 features=payload.get("features", []),
                 key_id=key_id,
                 signature_verified=True,
-                message=f"License product '{product_id}' does not match NOVA Machine Vision Platform ('{PRODUCT_ID_MVP}').",
+                message=f"License product '{product_id}' does not match INVI Machine Vision Platform ('{PRODUCT_ID_MVP}').",
                 error_code="INVALID_PRODUCT",
             )
 

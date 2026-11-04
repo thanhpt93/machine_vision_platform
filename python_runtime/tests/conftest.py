@@ -14,7 +14,7 @@ def setup_test_license_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     """Autouse fixture that provides an isolated license store with an active valid license
     matching the running edition for each test, preventing interference across tests.
     """
-    mode = os.environ.get("NOVA_DEPLOYMENT_MODE", "developer").strip().lower()
+    mode = (os.environ.get("INVI_DEPLOYMENT_MODE") or os.environ.get("NOVA_DEPLOYMENT_MODE") or "developer").strip().lower()
     edition = "production" if mode == "production" else "developer"
 
     license_dir = tmp_path / "test_license_store"
@@ -25,7 +25,7 @@ def setup_test_license_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
     # Generate and install a valid signed license
     artifact = create_signed_license_artifact(edition=edition)
-    (license_dir / "active_license.novalic.json").write_text(
+    (license_dir / "active_license.invilic.json").write_text(
         json.dumps(artifact, indent=2), encoding="utf-8"
     )
 

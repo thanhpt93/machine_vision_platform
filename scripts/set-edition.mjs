@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 const targetFile = path.join(repoRoot, 'src', 'shared', 'editionConfig.generated.ts');
 
-const rawArg = (process.argv[2] || process.env.NOVA_DEPLOYMENT_MODE || 'developer')
+const rawArg = (process.argv[2] || process.env.INVI_DEPLOYMENT_MODE || process.env.NOVA_DEPLOYMENT_MODE || 'developer')
   .trim()
   .toLowerCase();
 
@@ -22,15 +22,15 @@ const metadata =
   rawArg === 'production'
     ? {
         mode: 'production',
-        editionName: 'NOVA Machine Vision Platform — Production Edition',
-        appId: 'com.nova.machinevision.production',
-        productName: 'NOVA Machine Vision Platform Production',
+        editionName: 'INVI Machine Vision Platform — Production Edition',
+        appId: 'com.invi.machinevision.production',
+        productName: 'INVI Machine Vision Platform Production',
       }
     : {
         mode: 'developer',
-        editionName: 'NOVA Machine Vision Platform — Developer Edition',
-        appId: 'com.nova.machinevision.developer',
-        productName: 'NOVA Machine Vision Platform Developer',
+        editionName: 'INVI Machine Vision Platform — Developer Edition',
+        appId: 'com.invi.machinevision.developer',
+        productName: 'INVI Machine Vision Platform Developer',
       };
 
 const content = `// AUTO-GENERATED FILE — DO NOT EDIT DIRECTLY

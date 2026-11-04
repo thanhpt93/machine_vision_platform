@@ -6,14 +6,19 @@ import {
   Palette,
   Settings,
   Sun,
+  Globe,
+  Check,
 } from 'lucide-react';
 import { useProductionStore } from '../store/productionStore';
 import { useThemeStore } from '../../store/themeStore';
+import { useTranslation, SupportedLanguage } from '../../i18n/i18nStore';
 import { AppInfo } from '../../../main/preload';
 import { runtimeApi } from '../../services/runtimeApi';
 import { LicenseSettingsCard } from '../../license/LicenseSettingsCard';
 
 export const ProductionSettingsPage: React.FC = () => {
+  const { t, language, setLanguage, supportedLanguages, isLoading } = useTranslation();
+
   const preferences = useProductionStore((s) => s.preferences);
   const updatePreferences = useProductionStore((s) => s.updatePreferences);
   const healthResult = useProductionStore((s) => s.healthResult);
@@ -41,25 +46,84 @@ export const ProductionSettingsPage: React.FC = () => {
       <div>
         <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center space-x-2">
           <Settings className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          <span>Workstation Settings</span>
+          <span>{t('settings.title', undefined, 'Workstation Settings')}</span>
         </h2>
         <p className="text-xs text-slate-600 dark:text-slate-400">
-          Configure workstation display theme, image inspection viewer defaults, and licensing.
+          {t(
+            'settings.subtitle',
+            undefined,
+            'Configure workstation display theme, language preferences, image inspection viewer defaults, and licensing.'
+          )}
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-5xl">
-        {/* Card 1: Theme & Appearance */}
+        {/* Card 1: Language & Regional Preferences */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 shadow-xs space-y-4">
           <div className="flex items-center space-x-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-            <Palette className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-              Workstation Theme
+              {t('settings.language_section.title', undefined, 'Language & Regional Preferences')}
             </h3>
           </div>
 
           <p className="text-xs text-slate-600 dark:text-slate-400">
-            Select the visual contrast theme for the inspection operator workstation.
+            {t(
+              'settings.language_section.description',
+              undefined,
+              'Switch the entire workstation user interface and system messages.'
+            )}
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            {supportedLanguages.map((lang) => {
+              const isSelected = lang.code === language;
+              return (
+                <button
+                  key={lang.code}
+                  type="button"
+                  onClick={() => setLanguage(lang.code as SupportedLanguage)}
+                  disabled={isLoading}
+                  data-testid={`settings-lang-${lang.code}`}
+                  className={`flex items-center justify-between p-3 rounded-lg border text-xs font-semibold transition-all ${
+                    isSelected
+                      ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300 shadow-xs'
+                      : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <span className="text-base">{lang.flag}</span>
+                    <div className="text-left">
+                      <div>{lang.native_name}</div>
+                      <div className="text-[10px] font-mono font-normal text-slate-400 uppercase">
+                        {lang.name}
+                      </div>
+                    </div>
+                  </div>
+                  {isSelected && (
+                    <Check className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Card 2: Theme & Appearance */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 shadow-xs space-y-4">
+          <div className="flex items-center space-x-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <Palette className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              {t('settings.theme_section.title', undefined, 'Workstation Theme')}
+            </h3>
+          </div>
+
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            {t(
+              'settings.theme_section.description',
+              undefined,
+              'Select the visual contrast theme for the inspection operator workstation.'
+            )}
           </p>
 
           <div className="grid grid-cols-2 gap-3">
@@ -73,7 +137,7 @@ export const ProductionSettingsPage: React.FC = () => {
               }`}
             >
               <Sun className="w-4 h-4 text-amber-500" />
-              <span>Industrial Light Mode</span>
+              <span>{t('app.theme.light', undefined, 'Giao diện Sáng')}</span>
             </button>
 
             <button
@@ -86,13 +150,13 @@ export const ProductionSettingsPage: React.FC = () => {
               }`}
             >
               <Moon className="w-4 h-4 text-indigo-400" />
-              <span>Dark Workstation Mode</span>
+              <span>{t('app.theme.dark', undefined, 'Giao diện Tối')}</span>
             </button>
           </div>
         </div>
 
-        {/* Card 2: Inspection Image Viewer Preferences */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 shadow-xs space-y-4">
+        {/* Card 3: Inspection Image Viewer Preferences */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 shadow-xs space-y-4">
           <div className="flex items-center space-x-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
@@ -159,27 +223,27 @@ export const ProductionSettingsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 3: Software License & Entitlements */}
+        {/* Card 4: Software License & Entitlements */}
         <div className="lg:col-span-2">
           <LicenseSettingsCard />
         </div>
 
-        {/* Card 4: Application & Runtime Version Info */}
+        {/* Card 5: Application & Runtime Version Info */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 shadow-xs space-y-3">
           <div className="flex items-center space-x-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-              Application & Runtime Version Information
+              {t('settings.version_section.title', undefined, 'Application & Runtime Version Information')}
             </h3>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
             <div className="p-3 rounded bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
               <div className="text-[10px] uppercase font-bold text-slate-400">
-                Desktop Application
+                {t('settings.version_section.app_version', undefined, 'Desktop Application')}
               </div>
               <div className="font-semibold text-slate-900 dark:text-white mt-1">
-                NOVA Machine Vision Platform
+                INVI Machine Vision Platform
               </div>
               <div className="font-mono text-[11px] text-slate-500 mt-0.5">
                 Version: v{appInfo?.version || '0.1.0'} ({appInfo?.platform || 'win32'}-
@@ -189,7 +253,7 @@ export const ProductionSettingsPage: React.FC = () => {
 
             <div className="p-3 rounded bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
               <div className="text-[10px] uppercase font-bold text-slate-400">
-                Python Vision Runtime
+                {t('settings.version_section.runtime_version', undefined, 'Python Vision Runtime')}
               </div>
               <div className="font-semibold text-slate-900 dark:text-white mt-1">
                 {healthResult?.data?.service || 'machine-vision-python-runtime'}
@@ -202,7 +266,7 @@ export const ProductionSettingsPage: React.FC = () => {
 
             <div className="p-3 rounded bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
               <div className="text-[10px] uppercase font-bold text-slate-400">
-                Local IPC / REST Endpoint
+                {t('settings.version_section.environment', undefined, 'Local IPC / REST Endpoint')}
               </div>
               <div className="font-mono font-semibold text-slate-900 dark:text-white mt-1">
                 {runtimeApi.getBaseUrl()}

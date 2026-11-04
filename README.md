@@ -1,8 +1,8 @@
-# Nền tảng Machine Vision trên Windows (NOVA Industrial Vision Platform)
+# Nền tảng Machine Vision trên Windows (INVI Industrial Vision Platform)
 
 Nền tảng kiểm tra bằng thị giác máy tính trong môi trường công nghiệp dành cho hệ điều hành Windows. Ứng dụng cung cấp hai chế độ vận hành riêng biệt và hai bộ cài đặt Windows (NSIS Installer) độc lập từ chung một codebase:
-1. **Developer Edition (`NOVA Machine Vision Platform — Developer Edition`):** Môi trường kéo thả node trực quan (React Flow), cấu hình tham số, kiểm thử và phát hành phiên bản pipeline bất biến (`Release for Production`) dưới định dạng `.mvp`, đồng thời hỗ trợ chuyển đổi sang giao diện Production Mode để kiểm thử.
-2. **Production Edition (`NOVA Machine Vision Platform — Production Edition`):** Ứng dụng trạm kiểm tra công nghiệp chuyên dụng mở trực tiếp vào **Production Mode UI** khi khởi động, ẩn và khóa toàn bộ tính năng chỉnh sửa pipeline / Developer Mode / DevTools, tự động khởi chạy và quản lý tiến trình **Python Vision Runtime (FastAPI + OpenCV)**, và lưu trữ dữ liệu phát hành / lịch sử kiểm tra trong thư mục dữ liệu người dùng Windows (`%APPDATA%`).
+1. **Developer Edition (`INVI Machine Vision Platform — Developer Edition`):** Môi trường kéo thả node trực quan (React Flow), cấu hình tham số, kiểm thử và phát hành phiên bản pipeline bất biến (`Release for Production`) dưới định dạng `.mvp`, đồng thời hỗ trợ chuyển đổi sang giao diện Production Mode để kiểm thử.
+2. **Production Edition (`INVI Machine Vision Platform — Production Edition`):** Ứng dụng trạm kiểm tra công nghiệp chuyên dụng mở trực tiếp vào **Production Mode UI** khi khởi động, ẩn và khóa toàn bộ tính năng chỉnh sửa pipeline / Developer Mode / DevTools, tự động khởi chạy và quản lý tiến trình **Python Vision Runtime (FastAPI + OpenCV)**, và lưu trữ dữ liệu phát hành / lịch sử kiểm tra trong thư mục dữ liệu người dùng Windows (`%APPDATA%`).
 
 ---
 
@@ -19,7 +19,8 @@ Nền tảng kiểm tra bằng thị giác máy tính trong môi trường công
 │  │  │ - 9 Industrial Categories   │ │ - Inspection Workstation    │  │  │
 │  │  │ - Node Properties & Debug   │ │ - Inspection History        │  │  │
 │  │  │ - Validate & Release (.mvp) │ │ - Pipeline Management (R/O) │  │  │
-│  │  │                             │ │ - System Status & Settings  │  │  │
+│  │  │ - AI Model Registry         │ │ - System Status & Settings  │  │  │
+│  │  │ - Multi-Language (VI / EN)  │ │ - Multi-Language (VI / EN)  │  │  │
 │  │  └──────────────┬──────────────┘ └──────────────┬──────────────┘  │  │
 │  └─────────────────┼───────────────────────────────┼─────────────────┘  │
 │                    │ contextBridge (Safe IPC)      │                    │
@@ -38,6 +39,8 @@ Nền tảng kiểm tra bằng thị giác máy tính trong môi trường công
 │  - Production Inspection Service (Strict Separation of Execution Status │
 │    QUEUED/RUNNING/COMPLETED/FAILED/CANCELLED vs Outcome OK/NG/UNKNOWN)  │
 │  - 81 Real OpenCV / NumPy Handlers across 9 Industrial Categories       │
+│  - Ed25519 Digital License Verification (RFC 8785 Canonical JCS)        │
+│  - Dual-Language i18n Service (Vietnamese 🇻🇳 & English 🇬🇧)              │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -45,7 +48,7 @@ Nền tảng kiểm tra bằng thị giác máy tính trong môi trường công
 
 ## 2. 9 Danh mục Node Chuẩn Công nghiệp (9 Standard Industrial Categories)
 
-Hệ thống triển khai đầy đủ 9 nhóm chức năng xử lý ảnh truyền thống bằng OpenCV/NumPy (không sử dụng neural network/ONNX trong giai đoạn này, đảm bảo kiến trúc mở rộng sẵn sàng cho AI ở các giai đoạn sau):
+Hệ thống triển khai đầy đủ 9 nhóm chức năng xử lý ảnh truyền thống bằng OpenCV/NumPy:
 
 ### 1. Image Acquisition (`image_acquisition`)
 - `image_file`: Nạp ảnh tĩnh từ đĩa (PNG, JPEG, BMP).
@@ -190,28 +193,35 @@ Hệ thống triển khai đầy đủ 9 nhóm chức năng xử lý ảnh truy�
 | Phương thức | Đường dẫn | Chức năng |
 | :--- | :--- | :--- |
 | `GET` | `/api/license/status` | Truy vấn trạng thái bản quyền hiện tại (`NOT_ACTIVATED`, `VALID`, `EXPIRED`, `EDITION_MISMATCH`, `INVALID_SIGNATURE`, `INVALID_PRODUCT`) và thông tin tóm tắt |
-| `POST` | `/api/license/import` | Nhập file giấy phép số (`.novalic.json`), xác minh chữ ký Ed25519 bằng Public Key chuẩn, kiểm tra phiên bản và lưu trữ an toàn |
+| `POST` | `/api/license/import` | Nhập file giấy phép số (`.invilic.json`), xác minh chữ ký Ed25519 bằng Public Key chuẩn, kiểm tra phiên bản và lưu trữ an toàn |
 | `POST` | `/api/license/validate` | Kiểm tra tính hợp lệ của license artifact mà không lưu đè lên active license |
 | `GET` | `/api/license/details` | Truy xuất toàn bộ thông tin chi tiết: Customer, ID, Edition, Features, Giới hạn phần cứng, Expiration, Key ID và thuật toán ký |
 
+### 3.5. Internationalization & Translation API (`/api/i18n`)
+| Phương thức | Đường dẫn | Chức năng |
+| :--- | :--- | :--- |
+| `GET` | `/api/i18n/languages` | Danh sách ngôn ngữ hỗ trợ (`vi`: Tiếng Việt 🇻🇳, `en`: English 🇬🇧) |
+| `GET` | `/api/i18n/translations` | Tải toàn bộ từ điển bản dịch theo ngôn ngữ (`flat=true` trả về dạng key-value phẳng) |
+| `POST` | `/api/i18n/translate` | Dịch danh sách các khóa ngôn ngữ theo yêu cầu từ Backend |
+
 ---
 
-## 4. Cơ chế Ký số & Kích hoạt Bản quyền (NOVA Digital License Management)
+## 4. Cơ chế Ký số & Kích hoạt Bản quyền (INVI Digital License Management)
 
-Nền tảng tích hợp chặt chẽ với hệ thống **NOVA License Management** (`license_platform`) thông qua cơ chế phong bì chữ ký số Ed25519 độc lập (không cần kết nối Internet khi kích hoạt):
+Nền tảng tích hợp chặt chẽ với hệ thống **INVI License Management** (`license_platform`) thông qua cơ chế phong bì chữ ký số Ed25519 độc lập (không cần kết nối Internet khi kích hoạt):
 
 1. **Chuẩn phong bì & Định dạng Chữ ký:**
-   - Định dạng: `NOVA-LICENSE-ENVELOPE-V1`.
-   - Thuật toán ký số: **Ed25519** (RFC 8032) với khóa công khai chuẩn (`nova-key-2026-01`).
+   - Định dạng: `INVI-LICENSE-ENVELOPE-V1`.
+   - Thuật toán ký số: **Ed25519** (RFC 8032) với khóa công khai chuẩn (`invi-key-2026-01`).
    - Chuẩn hóa Payload: **RFC 8785 (JCS)** đảm bảo tính toàn vẹn tuyệt đối của dữ liệu JSON dạng canonical byte UTF-8 (Unicode NFC, sắp xếp khóa từ điển, không có khoảng trắng thừa).
    - Chỉ lưu trữ Public Key trên máy trạm (tuyệt đối không nhúng Private Key vào máy khách).
 2. **Quy trình Kích hoạt (Activation Workflow):**
-   - Quản trị viên cấp phép và xuất file `.novalic.json` từ hệ thống `license_platform`.
-   - Người vận hành trên máy trạm mở NOVA Machine Vision Platform (Developer Edition hoặc Production Edition).
+   - Quản trị viên cấp phép và xuất file `.invilic.json` từ hệ thống `license_platform`.
+   - Người vận hành trên máy trạm mở INVI Machine Vision Platform (Developer Edition hoặc Production Edition).
    - Nhấn vào badge bản quyền hoặc vào trang **Settings > Software License & Activation** và chọn **Import & Activate License...**.
-   - Hộp thoại hệ thống Electron Native mở ra để người dùng chọn file `.novalic.json`.
-   - Python Vision Runtime xác minh chữ ký số Ed25519, đối chiếu `product_id` (`NOVA-MV-DEV` hoặc `NOVA-MV-PROD`), kiểm tra `edition` (`developer` hoặc `production`), và kiểm tra thời hạn hiệu lực.
-   - Khi hợp lệ, license được ghi nguyên tử (`active_license.novalic.json`) và kích hoạt ngay lập tức mà không cần khởi động lại ứng dụng.
+   - Hộp thoại hệ thống Electron Native mở ra để người dùng chọn file `.invilic.json`.
+   - Python Vision Runtime xác minh chữ ký số Ed25519, đối chiếu `product_id` (`INVI-MV-DEV` hoặc `INVI-MV-PROD`), kiểm tra `edition` (`developer` hoặc `production`), và kiểm tra thời hạn hiệu lực.
+   - Khi hợp lệ, license được ghi nguyên tử (`active_license.invilic.json`) và kích hoạt ngay lập tức mà không cần khởi động lại ứng dụng.
 3. **Bảo vệ Vận hành (Backend Enforcement Guards):**
    - `POST /api/pipeline/execute`: Yêu cầu giấy phép Developer Edition hợp lệ.
    - `POST /api/releases`: Yêu cầu giấy phép Developer Edition hợp lệ để phát hành pipeline.
@@ -225,12 +235,12 @@ Dự án hỗ trợ đóng gói hai phiên bản độc lập cho Windows 10/11 
 
 | Thuộc tính | Developer Edition | Production Edition |
 | :--- | :--- | :--- |
-| **Tên sản phẩm** | `NOVA Machine Vision Platform — Developer Edition` | `NOVA Machine Vision Platform — Production Edition` |
-| **Application ID** | `com.nova.machinevision.developer` | `com.nova.machinevision.production` |
+| **Tên sản phẩm** | `INVI Machine Vision Platform — Developer Edition` | `INVI Machine Vision Platform — Production Edition` |
+| **Application ID** | `com.invi.machinevision.developer` | `com.invi.machinevision.production` |
 | **Giao diện mặc định** | Pipeline Editor + Mode Switcher | Mở trực tiếp vào **Production Mode UI** |
 | **Quyền chỉnh sửa Pipeline** | Đầy đủ (Editor, Save/Open `.mvp`, Release) | Khóa hoàn toàn (Read-Only, ẩn Editor, IPC & `/api/pipeline`) |
-| **File bộ cài đặt (`.exe`)** | `release/developer/NOVA-Machine-Vision-Developer-Setup-0.1.0.exe` | `release/production/NOVA-Machine-Vision-Production-Setup-0.1.0.exe` |
-| **Thư mục dữ liệu & Logs** | `python_runtime/data` (hoặc `%APPDATA%`) | `%APPDATA%/NOVA Machine Vision Platform Production/runtime_data` & `logs` |
+| **File bộ cài đặt (`.exe`)** | `release/developer/INVI-Machine-Vision-Developer-Setup-0.1.0.exe` | `release/production/INVI-Machine-Vision-Production-Setup-0.1.0.exe` |
+| **Thư mục dữ liệu & Logs** | `python_runtime/data` (hoặc `%APPDATA%`) | `%APPDATA%/INVI Machine Vision Platform Production/runtime_data` & `logs` |
 
 ### Các lệnh Build & Đóng gói bộ cài đặt Windows
 
@@ -254,22 +264,47 @@ npm run dist:production
 
 ---
 
-## 6. Kiểm thử tự động (100% Pass Rate)
+## 6. Hệ thống Đa ngôn ngữ (Internationalization - i18n)
 
-Hệ thống được kiểm thử tự động toàn diện từ unit test từng handler, quản lý phát hành (Phase 2), thực thi Production (Phase 3), giao diện Production Mode UI, phân tách quyền hạn đóng gói Production Edition, cơ chế nhập và xác minh chữ ký số bản quyền Ed25519 đến kiểm thử tích hợp toàn bộ luồng đồ thị DAG trên cả Frontend và Backend:
+INVI Machine Vision Platform tích hợp giải pháp chuyển đổi đa ngôn ngữ đồng bộ hai chiều (Frontend React & Backend Python Vision Runtime):
+
+1. **Ngôn ngữ hỗ trợ:**
+   - 🇻🇳 **Tiếng Việt (`vi`):** Tối ưu hóa thuật ngữ công nghiệp cho nhà máy, trạm kiểm tra và kỹ sư vận hành tại xưởng sản xuất.
+   - 🇬🇧 **English (`en`):** Chuẩn quốc tế cho kỹ sư tự động hóa toàn cầu và xuất khẩu hệ thống.
+
+2. **Cơ chế hoạt động:**
+   - **Frontend React (`src/renderer/i18n/`):**
+     - Quản lý trạng thái đa ngôn ngữ thông qua Zustand Store (`useI18nStore`), cung cấp hook `useTranslation()` / hàm `t(key, params, fallback)`.
+     - Bộ nhớ đệm cục bộ (Local Fallback Catalog) khởi tạo tức thì (zero-latency UI rendering), không làm trễ hay khóa giao diện lúc khởi động.
+     - Tự động đồng bộ từ điển mới nhất trong nền từ Python Vision Runtime qua `/api/i18n/translations`.
+     - Ghi nhớ tùy chọn ngôn ngữ của người dùng qua `localStorage` (`invi_language_preference`).
+   - **Giao diện Chọn Ngôn ngữ (`LanguageSelector.tsx`):**
+     - Tích hợp trực tiếp trên thanh Header của chế độ **Developer Mode**.
+     - Tích hợp trên thanh điều hướng đầu trang của chế độ **Production Mode Workstation**.
+     - Tích hợp thành card chuyên dụng **Language & Regional Preferences** trong trang **Production Settings**.
+   - **Backend Vision Runtime (`python_runtime/vision_runtime/i18n/`):**
+     - Quản lý từ điển JSON phân cấp (`locales/vi.json`, `locales/en.json`) và chuyển đổi phẳng (flatten dot-notation).
+     - Hỗ trợ nội suy tham số động `{param}`, fallback ngữ nghĩa tự động khi thiếu khóa.
+     - Cung cấp các endpoint REST API phục vụ cả UI và hệ thống thông báo sự kiện / nhật ký kiểm tra backend.
+
+---
+
+## 7. Kiểm thử tự động (100% Pass Rate)
+
+Hệ thống được kiểm thử tự động toàn diện từ unit test từng handler, quản lý phát hành (Phase 2), thực thi Production (Phase 3), giao diện Production Mode UI, phân tách quyền hạn đóng gói Production Edition, cơ chế nhập và xác minh chữ ký số bản quyền Ed25519, tính năng chọn ngôn ngữ đa quốc gia (i18n) đến kiểm thử tích hợp toàn bộ luồng đồ thị DAG trên cả Frontend và Backend:
 
 ```powershell
-# 1. Kiểm thử Frontend (70 tests Vitest) + TypeScript strict check
+# 1. Kiểm thử Frontend (93 tests Vitest across 12 test files) + TypeScript strict check
 npm run typecheck
 npm test -- --run
 
-# 2. Kiểm thử Python Runtime trên môi trường Conda `api` (75 tests Pytest)
+# 2. Kiểm thử Python Runtime trên môi trường Conda `api` (89 tests Pytest)
 C:\Users\admin\miniconda3\envs\api\python.exe -m pytest python_runtime/tests/ -v
 ```
 
 ---
 
-## 7. Bảng tổng hợp trạng thái nghiệm thu
+## 8. Bảng tổng hợp trạng thái nghiệm thu
 
 | Hạng mục kiểm tra | Trạng thái | Chi tiết triển khai |
 | :--- | :---: | :--- |
@@ -278,7 +313,8 @@ C:\Users\admin\miniconda3\envs\api\python.exe -m pytest python_runtime/tests/ -v
 | **Phase 1 — Production Readiness Audit** | Hoàn thành | Báo cáo kiểm toán đầy đủ tại `docs/PRODUCTION_FOUNDATION_AUDIT.md` |
 | **Phase 2 — Validation & Release Management** | Hoàn thành | Vòng đời `Draft → Validated → Released → Archived`, SHA-256 canonical checksum, lưu trữ nguyên tử (`os.replace`), rollback & migration `.mvp` |
 | **Phase 3 — Production Execution API** | Hoàn thành | Vòng đời `QUEUED → RUNNING → COMPLETED / FAILED / CANCELLED`, tách biệt `execution_status` và `inspection_outcome` (`OK`, `NG`, `UNKNOWN`), khóa đồng thời an toàn |
-| **Production Mode UI (NOVA Workstation)** | Hoàn thành | 6 trang chức năng (`Dashboard`, `Inspection`, `History`, `Pipeline Management Read-Only`, `System Status`, `Settings`), chuyển đổi `Developer Mode` / `Production Mode`, phát hành trực tiếp từ Editor |
-| **Production Edition Packaging (Windows NSIS)** | Hoàn thành | Bộ cài đặt riêng biệt `NOVA-Machine-Vision-Production-Setup-0.1.0.exe` và `NOVA-Machine-Vision-Developer-Setup-0.1.0.exe`, tự động quản lý vòng đời Python Runtime và phân tách `%APPDATA%` |
-| **Digital License Import & Verification** | Hoàn thành | Chuẩn phong bì `NOVA-LICENSE-ENVELOPE-V1`, xác minh Ed25519 theo chuẩn RFC 8785 JCS, phân biệt Developer (`NOVA-MV-DEV`) và Production (`NOVA-MV-PROD`), bảo vệ backend operation guard, UI Modal & Badge trực quan |
-| **Kiểm thử tự động** | Hoàn thành | **70/70 Vitest tests** + **75/75 Pytest tests** vượt qua 100%, 0 lỗi TypeScript strict |
+| **Production Mode UI (INVI Workstation)** | Hoàn thành | 6 trang chức năng (`Dashboard`, `Inspection`, `History`, `Pipeline Management Read-Only`, `System Status`, `Settings`), chuyển đổi `Developer Mode` / `Production Mode`, phát hành trực tiếp từ Editor |
+| **Production Edition Packaging (Windows NSIS)** | Hoàn thành | Bộ cài đặt riêng biệt `INVI-Machine-Vision-Production-Setup-0.1.0.exe` và `INVI-Machine-Vision-Developer-Setup-0.1.0.exe`, tự động quản lý vòng đời Python Runtime và phân tách `%APPDATA%` |
+| **Digital License Import & Verification** | Hoàn thành | Chuẩn phong bì `INVI-LICENSE-ENVELOPE-V1`, xác minh Ed25519 theo chuẩn RFC 8785 JCS, phân biệt Developer (`INVI-MV-DEV`) và Production (`INVI-MV-PROD`), bảo vệ backend operation guard, UI Modal & Badge trực quan |
+| **Internationalization (i18n Dual-Language)** | Hoàn thành | Bộ chọn ngôn ngữ trực quan 🇻🇳 Tiếng Việt & 🇬🇧 English, backend i18n service & REST API, đồng bộ tự động 2 chiều, ghi nhớ cấu hình người dùng |
+| **Kiểm thử tự động** | Hoàn thành | **93/93 Vitest tests** + **89/89 Pytest tests** vượt qua 100%, 0 lỗi TypeScript strict |

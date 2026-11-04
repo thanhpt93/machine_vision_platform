@@ -27,7 +27,7 @@ interface PipelineEditorProps {
 }
 
 export const PipelineEditor: React.FC<PipelineEditorProps> = ({
-  onOpenDiagnostics,
+  onOpenDiagnostics: _onOpenDiagnostics,
   onOpenProductionMode,
 }) => {
   const pipelineMeta = usePipelineStore((state) => state.pipelineMeta);

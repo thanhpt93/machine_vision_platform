@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/releases", tags=["releases"])
 
 
 def _ensure_developer_edition_for_mutation() -> None:
-    if os.environ.get("NOVA_DEPLOYMENT_MODE", "developer").strip().lower() == "production":
+    if (os.environ.get("INVI_DEPLOYMENT_MODE") or os.environ.get("NOVA_DEPLOYMENT_MODE") or "developer").strip().lower() == "production":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Pipeline draft and release creation endpoints are disabled in Production Edition.",

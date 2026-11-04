@@ -135,7 +135,7 @@ function createMockInspectionRecord(overrides: Partial<InspectionRecord>): Inspe
   };
 }
 
-describe('NOVA Production Mode UI', () => {
+describe('INVI Production Mode UI', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
 

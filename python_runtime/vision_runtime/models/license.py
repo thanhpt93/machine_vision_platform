@@ -1,6 +1,6 @@
-"""Pydantic data models for NOVA Machine Vision Platform Licensing.
+"""Pydantic data models for INVI Machine Vision Platform Licensing.
 
-Matches the authoritative contract and canonical serialization from NOVA License Management.
+Matches the authoritative contract and canonical serialization from INVI License Management.
 """
 
 from datetime import datetime
@@ -45,7 +45,7 @@ class LicensePayloadModel(BaseModel):
 
 
 class SignedLicenseEnvelopeModel(BaseModel):
-    artifact_format: str = Field(..., pattern=r"^NOVA-LICENSE-ENVELOPE-V1$")
+    artifact_format: str = Field(..., pattern=r"^(INVI|NOVA)-LICENSE-ENVELOPE-V1$")
     algorithm: str = Field(..., pattern=r"^Ed25519$")
     key_id: str = Field(..., min_length=1)
     payload: Dict[str, Any]

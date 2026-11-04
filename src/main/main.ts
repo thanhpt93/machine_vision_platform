@@ -420,13 +420,13 @@ ipcMain.handle('dialog:select-license', async () => {
 
   try {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
-      title: 'Import NOVA License Artifact',
+      title: 'Import INVI License Artifact',
       filters: [
         {
-          name: 'NOVA License Artifacts (*.novalic.json; *.lic; *.json)',
+          name: 'INVI License Artifacts (*.invilic.json; *.novalic.json; *.lic; *.json)',
           extensions: ['json', 'lic'],
         },
-        { name: 'NOVA Signed License (*.novalic.json)', extensions: ['json'] },
+        { name: 'INVI Signed License (*.invilic.json; *.novalic.json)', extensions: ['json'] },
         { name: 'Standard License (*.lic)', extensions: ['lic'] },
         { name: 'All Files (*.*)', extensions: ['*'] },
       ],

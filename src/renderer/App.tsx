@@ -11,8 +11,10 @@ import { HealthDashboard } from './components/HealthDashboard';
 import { PipelineEditor } from './pipeline/components/PipelineEditor';
 import { ProductionLayout } from './production/components/ProductionLayout';
 import { AiModelRegistry } from './components/AiModelRegistry';
+import { LanguageSelector } from './components/LanguageSelector';
 import { useThemeStore } from './store/themeStore';
 import { useLicenseStore } from './store/licenseStore';
+import { useI18nStore, useTranslation } from './i18n/i18nStore';
 import { DeploymentMode, isProductionEdition } from '../shared/editionConfig';
 import { LicenseStatusBadge } from './license/LicenseStatusBadge';
 import { LicenseActivationModal } from './license/LicenseActivationModal';
@@ -33,6 +35,10 @@ export const App: React.FC<AppProps> = ({
     isProdEdition ? 'production' : initialTab
   );
 
+  // Internationalization
+  const { t } = useTranslation();
+  const syncWithBackend = useI18nStore((state) => state.syncWithBackend);
+
   // Theme Management
   const theme = useThemeStore((state) => state.theme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
@@ -43,6 +49,7 @@ export const App: React.FC<AppProps> = ({
 
   useEffect(() => {
     refreshLicenseStatus();
+    syncWithBackend();
 
     let unsubscribeMenu: (() => void) | undefined;
     if (typeof window !== 'undefined' && window.electronAPI?.onMenuAction) {
@@ -56,7 +63,7 @@ export const App: React.FC<AppProps> = ({
     return () => {
       if (unsubscribeMenu) unsubscribeMenu();
     };
-  }, [refreshLicenseStatus, openActivationModal]);
+  }, [refreshLicenseStatus, openActivationModal, syncWithBackend]);
 
   // ==========================================================================
   // PRODUCTION EDITION SHELL
@@ -89,7 +96,7 @@ export const App: React.FC<AppProps> = ({
             </div>
             <div>
               <h1 className="text-xs font-bold tracking-tight text-slate-900 dark:text-white uppercase">
-                Machine Vision Platform
+                {t('app.title', undefined, 'Machine Vision Platform')}
               </h1>
             </div>
           </div>
@@ -107,7 +114,7 @@ export const App: React.FC<AppProps> = ({
               }`}
             >
               <Workflow className="w-3.5 h-3.5" />
-              <span>Pipeline Editor</span>
+              <span>{t('app.tabs.editor', undefined, 'Pipeline Editor')}</span>
             </button>
 
             <button
@@ -121,13 +128,16 @@ export const App: React.FC<AppProps> = ({
               }`}
             >
               <Brain className="w-3.5 h-3.5" />
-              <span>AI Models</span>
+              <span>{t('app.tabs.models', undefined, 'AI Models')}</span>
             </button>
           </nav>
         </div>
 
-        {/* Right Section: License, Diagnostics & Theme Toggle */}
+        {/* Right Section: Language Selector, License, Diagnostics & Theme Toggle */}
         <div className="flex items-center space-x-2.5 text-xs">
+          {/* Language Selector */}
+          <LanguageSelector />
+
           {/* License Status Badge */}
           <LicenseStatusBadge />
 
@@ -144,7 +154,9 @@ export const App: React.FC<AppProps> = ({
             title="View Python Runtime Health Diagnostics"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-            <span className="text-[11px] font-medium hidden md:inline">Diagnostics</span>
+            <span className="text-[11px] font-medium hidden md:inline">
+              {t('app.tabs.diagnostics', undefined, 'Diagnostics')}
+            </span>
           </button>
 
           {/* Theme Toggle Button (Light/Dark Mode) */}
@@ -154,19 +166,23 @@ export const App: React.FC<AppProps> = ({
             className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-colors shadow-xs"
             title={
               theme === 'dark'
-                ? 'Chuyển sang giao diện Sáng [Light Mode]'
-                : 'Chuyển sang giao diện Tối [Dark Mode]'
+                ? t('app.theme.toggle_to_light', undefined, 'Chuyển sang giao diện Sáng [Light Mode]')
+                : t('app.theme.toggle_to_dark', undefined, 'Chuyển sang giao diện Tối [Dark Mode]')
             }
           >
             {theme === 'dark' ? (
               <>
                 <Sun className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-[11px] font-medium hidden md:inline">Giao diện Sáng</span>
+                <span className="text-[11px] font-medium hidden md:inline">
+                  {t('app.theme.light', undefined, 'Giao diện Sáng')}
+                </span>
               </>
             ) : (
               <>
                 <Moon className="w-3.5 h-3.5 text-indigo-500" />
-                <span className="text-[11px] font-medium hidden md:inline">Giao diện Tối</span>
+                <span className="text-[11px] font-medium hidden md:inline">
+                  {t('app.theme.dark', undefined, 'Giao diện Tối')}
+                </span>
               </>
             )}
           </button>
@@ -211,11 +227,12 @@ export const App: React.FC<AppProps> = ({
         )}
       </main>
 
-      {/* Global Modals for License Management */}
+      {/* Shared Modals */}
       <LicenseActivationModal />
       <LicenseDetailsModal />
     </div>
   );
 };
+
 
 export default App;

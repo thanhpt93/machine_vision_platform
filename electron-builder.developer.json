@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "com.nova.machinevision.developer",
-  "productName": "NOVA Machine Vision Platform Developer",
-  "copyright": "Copyright © 2026 NOVA Machine Vision Platform",
+  "appId": "com.invi.machinevision.developer",
+  "productName": "INVI Machine Vision Platform Developer",
+  "copyright": "Copyright © 2026 INVI Machine Vision Platform",
   "directories": {
     "output": "release/developer"
   },
@@ -38,7 +38,7 @@
         "arch": ["x64"]
       }
     ],
-    "artifactName": "NOVA-Machine-Vision-Developer-Setup-${version}.${ext}"
+    "artifactName": "INVI-Machine-Vision-Developer-Setup-${version}.${ext}"
   },
   "nsis": {
     "oneClick": false,
@@ -46,8 +46,8 @@
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "shortcutName": "NOVA Machine Vision Platform — Developer Edition",
-    "uninstallDisplayName": "NOVA Machine Vision Platform — Developer Edition",
+    "shortcutName": "INVI Machine Vision Platform — Developer Edition",
+    "uninstallDisplayName": "INVI Machine Vision Platform — Developer Edition",
     "deleteAppDataOnUninstall": false
   }
 }

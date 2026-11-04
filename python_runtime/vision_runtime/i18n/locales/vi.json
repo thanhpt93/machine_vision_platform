@@ -1,0 +1,150 @@
+{
+  "app": {
+    "title": "Nền tảng Thị giác Máy tính Công nghiệp",
+    "short_title": "INVI Vision",
+    "workstation_title": "INVI Machine Vision",
+    "workstation_subtitle": "Trạm kiểm tra công nghiệp",
+    "developer_mode": "Chế độ Nhà phát triển",
+    "production_mode": "Chế độ Vận hành Sản xuất",
+    "tabs": {
+      "editor": "Thiết kế Pipeline",
+      "diagnostics": "Chẩn đoán & Runtime",
+      "models": "Mô hình AI",
+      "production": "Trạm Vận hành"
+    },
+    "theme": {
+      "light": "Giao diện Sáng",
+      "dark": "Giao diện Tối",
+      "toggle_to_light": "Chuyển sang giao diện Sáng [Light Mode]",
+      "toggle_to_dark": "Chuyển sang giao diện Tối [Dark Mode]"
+    },
+    "language": {
+      "label": "Ngôn ngữ",
+      "select": "Chọn ngôn ngữ",
+      "vi": "Tiếng Việt",
+      "en": "English",
+      "switch_success": "Đã chuyển đổi ngôn ngữ thành công sang {name}"
+    }
+  },
+  "nav": {
+    "operator_navigation": "Điều hướng Vận hành",
+    "dashboard": "Bảng điều khiển",
+    "inspection": "Trạm kiểm tra",
+    "history": "Lịch sử kiểm tra",
+    "pipelines": "Quản lý Pipeline",
+    "system_status": "Trạng thái hệ thống",
+    "settings": "Cài đặt & Cấu hình",
+    "switch_to_developer": "Chuyển sang Chế độ Nhà phát triển"
+  },
+  "status": {
+    "runtime": "Vision Runtime",
+    "online": "HOẠT ĐỘNG",
+    "offline": "MẤT KẾT NỐI",
+    "active_pipeline": "Đang chạy: {name} v{version}",
+    "no_pipeline_selected": "Chưa chọn Pipeline",
+    "released_count": "{count} Pipeline đã phát hành",
+    "executing_inspection": "ĐANG THỰC HIỆN KIỂM TRA",
+    "mode_production_readonly": "Chế độ: PRODUCTION (CHỈ ĐỌC)"
+  },
+  "inspection": {
+    "title": "Trạm kiểm tra thị giác",
+    "subtitle": "Thực thi kiểm tra tự động và đo lường quang học trên dây chuyền",
+    "select_image": "Chọn ảnh kiểm tra...",
+    "inspect_now": "Kiểm tra ngay",
+    "running": "Đang xử lý...",
+    "cancel": "Hủy kiểm tra",
+    "no_pipeline_banner": "Chưa có bản phát hành pipeline khả dụng. Hãy phát hành một bản pipeline từ Chế độ Nhà phát triển để bắt đầu.",
+    "outcome": {
+      "label": "Phán quyết",
+      "ok": "ĐẠT (OK)",
+      "ng": "HỎNG (NG)",
+      "unknown": "CHƯA XÁC ĐỊNH",
+      "failed": "LỖI THỰC THI"
+    },
+    "cycle_time": "Thời gian chu kỳ",
+    "timestamp": "Thời điểm kiểm tra",
+    "measurements": "Số liệu đo lường",
+    "defects": "Khuyết tật phát hiện",
+    "node_previews": "Xem trước kết quả các Node"
+  },
+  "dashboard": {
+    "title": "Bảng điều khiển Giám sát Sản xuất",
+    "subtitle": "Tổng quan hiệu suất kiểm tra thời gian thực, tỷ lệ OK/NG và cảnh báo",
+    "total_inspections": "Tổng số lượt kiểm tra",
+    "ok_rate": "Tỷ lệ Đạt (Yield Rate)",
+    "ng_rate": "Tỷ lệ Lỗi (NG Rate)",
+    "avg_cycle_time": "Thời gian chu kỳ trung bình",
+    "recent_activity": "Hoạt động kiểm tra gần nhất",
+    "no_data": "Chưa có dữ liệu kiểm tra nào được ghi nhận"
+  },
+  "history": {
+    "title": "Lịch sử Kiểm tra Công nghiệp",
+    "subtitle": "Tra cứu, lọc và xuất nhật ký các lượt kiểm tra sản phẩm",
+    "search_placeholder": "Tìm kiếm theo mã lượt kiểm tra, tên pipeline, phán quyết...",
+    "filter_all": "Tất cả phán quyết",
+    "filter_ok": "Chỉ xem OK",
+    "filter_ng": "Chỉ xem NG",
+    "export_csv": "Xuất dữ liệu CSV",
+    "table": {
+      "id": "Mã Kiểm Tra",
+      "timestamp": "Thời gian",
+      "pipeline": "Pipeline",
+      "version": "Phiên bản",
+      "outcome": "Phán quyết",
+      "cycle_time": "Thời gian",
+      "details": "Chi tiết"
+    }
+  },
+  "settings": {
+    "title": "Cài đặt & Cấu hình Máy trạm",
+    "subtitle": "Quản lý tùy chọn ngôn ngữ, giao diện hiển thị, license và tiến trình hệ thống",
+    "language_section": {
+      "title": "Tùy chọn Ngôn ngữ Giao diện",
+      "description": "Chuyển đổi toàn bộ ngôn ngữ trên giao diện máy trạm và thông báo hệ thống.",
+      "current_language": "Ngôn ngữ hiện tại",
+      "select_label": "Chọn ngôn ngữ hiển thị:"
+    },
+    "theme_section": {
+      "title": "Chế độ Giao diện Hiển thị",
+      "description": "Tùy chỉnh giao diện Sáng (Light) hoặc Tối (Dark) tối ưu cho môi trường nhà máy.",
+      "switch_button": "Đổi chế độ giao diện"
+    },
+    "version_section": {
+      "title": "Thông tin Phiên bản Ứng dụng & Runtime",
+      "app_version": "Ứng dụng Máy trạm (Desktop)",
+      "runtime_version": "Python Vision Runtime",
+      "environment": "Môi trường thực thi"
+    }
+  },
+  "license": {
+    "title": "Kích hoạt Bản quyền INVI",
+    "badge_valid": "BẢN QUYỀN HỢP LỆ",
+    "badge_invalid": "CHƯA KÍCH HOẠT",
+    "badge_expired": "BẢN QUYỀN HẾT HẠN",
+    "import_button": "Nhập & Kích hoạt License...",
+    "details_button": "Xem chi tiết License",
+    "instructions": "Nhập tệp giấy phép số có chữ ký điện tử được cấp bởi INVI License Management (.invilic.json, .lic, .json).",
+    "select_file": "Chọn Tệp Giấy phép...",
+    "active_installed": "Giấy phép đang hoạt động",
+    "confirm_replace": "Xác nhận & Chọn Giấy phép Thay thế",
+    "details": {
+      "title": "Chi tiết Giấy phép Phần mềm",
+      "product": "Sản phẩm",
+      "edition": "Phiên bản",
+      "customer": "Khách hàng",
+      "license_number": "Số hiệu giấy phép",
+      "type": "Loại bản quyền",
+      "valid_from": "Có hiệu lực từ",
+      "expires_at": "Ngày hết hạn",
+      "features": "Tính năng kích hoạt",
+      "key_id": "Khóa ký xác thực"
+    }
+  },
+  "models": {
+    "title": "Trung tâm Quản lý Mô hình AI",
+    "subtitle": "Nhập, kiểm định và quản lý các mô hình Image Classification và Object Detection định dạng ONNX",
+    "badge_integration": "Tích hợp INVI AI Trainer",
+    "import_button": "Nhập Mô hình AI",
+    "no_models": "Chưa có mô hình nào được nhập. Nhấn \"Nhập Mô hình AI\" để đưa gói mô hình từ INVI AI Trainer vào hệ thống."
+  }
+}

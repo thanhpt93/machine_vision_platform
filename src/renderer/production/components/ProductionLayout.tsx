@@ -24,6 +24,7 @@ import { ProductionSettingsPage } from '../pages/ProductionSettingsPage';
 import { LicenseStatusBadge } from '../../license/LicenseStatusBadge';
 import { LicenseActivationModal } from '../../license/LicenseActivationModal';
 import { LicenseDetailsModal } from '../../license/LicenseDetailsModal';
+import { LanguageSelector } from '../../components/LanguageSelector';
 
 interface ProductionLayoutProps {
   onSwitchToDeveloperMode?: () => void;
@@ -143,7 +144,7 @@ export const ProductionLayout: React.FC<ProductionLayoutProps> = ({
             </div>
             <div className="min-w-0">
               <div className="text-xs font-extrabold tracking-tight text-slate-900 dark:text-white uppercase truncate">
-                NOVA Machine Vision
+                INVI Machine Vision
               </div>
               <div className="text-[10px] font-mono text-blue-600 dark:text-blue-400 font-semibold uppercase">
                 Production Workstation
@@ -256,13 +257,16 @@ export const ProductionLayout: React.FC<ProductionLayoutProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2.5">
             {isRunningInspection && (
               <span className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-[11px] font-mono font-semibold">
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
                 <span>EXECUTING INSPECTION</span>
               </span>
             )}
+
+            {/* Language Selector */}
+            <LanguageSelector compact />
 
             {/* License Status Badge */}
             <LicenseStatusBadge />

@@ -20,15 +20,15 @@ export interface EditionMetadata {
 const EDITION_PRESETS: Record<DeploymentMode, Omit<EditionMetadata, 'isProductionEdition' | 'isDeveloperEdition'>> = {
   developer: {
     deploymentMode: 'developer',
-    editionName: 'NOVA Machine Vision Platform — Developer Edition',
-    productName: 'NOVA Machine Vision Platform Developer',
-    appId: 'com.nova.machinevision.developer',
+    editionName: 'INVI Machine Vision Platform — Developer Edition',
+    productName: 'INVI Machine Vision Platform Developer',
+    appId: 'com.invi.machinevision.developer',
   },
   production: {
     deploymentMode: 'production',
-    editionName: 'NOVA Machine Vision Platform — Production Edition',
-    productName: 'NOVA Machine Vision Platform Production',
-    appId: 'com.nova.machinevision.production',
+    editionName: 'INVI Machine Vision Platform — Production Edition',
+    productName: 'INVI Machine Vision Platform Production',
+    appId: 'com.invi.machinevision.production',
   },
 };
 
@@ -52,8 +52,9 @@ export function resolveDeploymentMode(overrideMode?: string | null): DeploymentM
   }
 
   // Check Node/Electron main/preload process.env if available
-  if (typeof process !== 'undefined' && process?.env?.NOVA_DEPLOYMENT_MODE) {
-    const envMode = process.env.NOVA_DEPLOYMENT_MODE.trim().toLowerCase();
+  const rawEnvMode = typeof process !== 'undefined' ? (process.env?.INVI_DEPLOYMENT_MODE || process.env?.NOVA_DEPLOYMENT_MODE) : undefined;
+  if (rawEnvMode) {
+    const envMode = rawEnvMode.trim().toLowerCase();
     if (envMode === 'production') {
       return 'production';
     }

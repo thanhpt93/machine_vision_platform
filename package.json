@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Industrial Machine Vision Desktop Platform on Windows",
-  "author": "NOVA Industrial Vision Systems",
+  "author": "INVI Industrial Vision Systems",
   "main": "dist/main/main.js",
   "scripts": {
     "dev:renderer": "vite",

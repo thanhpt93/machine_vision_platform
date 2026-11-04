@@ -1,4 +1,4 @@
-# NOVA AI Trainer ?" Machine Vision Platform Export Compatibility Specification
+# INVI AI Trainer ?" Machine Vision Platform Export Compatibility Specification
 
 ## Document Overview
 - **Author**: Antigravity AI Platform Engineer
@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-This specification establishes the official contract between model packages exported by **NOVA AI Trainer** and model ingestion & inference inside **NOVA Machine Vision Platform**.
+This specification establishes the official contract between model packages exported by **INVI AI Trainer** and model ingestion & inference inside **INVI Machine Vision Platform**.
 
 Inspection of `C:\Project\ai_trainer\backend\app\services\model_catalog_service.py` and exported artifacts confirms:
 1. Two distinct model task types are exported:
@@ -211,7 +211,7 @@ object_detection_model/
 
 ## 4. Input & Output Contract Comparison
 
-| Property | NOVA AI Trainer Classification | NOVA AI Trainer Object Detection | NOVA Machine Vision Platform Pipeline Type |
+| Property | INVI AI Trainer Classification | INVI AI Trainer Object Detection | INVI Machine Vision Platform Pipeline Type |
 |---|---|---|---|
 | **Input Image** | Numpy ndarray (H, W, 3) | Numpy ndarray (H, W, 3) | `ImageFrame` (OpenCV BGR numpy array) |
 | **Color Space Conversion** | BGR -> RGB | BGR -> RGB | Automatically performed by Preprocessor |

@@ -86,7 +86,7 @@ export const LicenseDetailsModal: React.FC = () => {
             <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
               <div className="text-[10px] uppercase font-bold text-slate-400">Product</div>
               <div className="font-mono font-bold text-slate-800 dark:text-slate-200 mt-1">
-                {det?.product_id || 'NOVA-MVP'}
+                {det?.product_id || 'INVI-MVP'}
               </div>
             </div>
           </div>
@@ -214,7 +214,7 @@ export const LicenseDetailsModal: React.FC = () => {
               <div>
                 <span className="text-slate-400">Signing Key ID: </span>
                 <span className="font-mono font-semibold text-slate-900 dark:text-white">
-                  {det?.key_id || 'nova-key-2026-01'}
+                  {det?.key_id || 'invi-key-2026-01'}
                 </span>
               </div>
               {det?.key_fingerprint && (

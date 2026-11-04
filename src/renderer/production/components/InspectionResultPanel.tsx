@@ -4,9 +4,7 @@ import {
   AlertTriangle,
   HelpCircle,
   Crosshair,
-  CheckCircle2,
   Box,
-  Ruler,
 } from 'lucide-react';
 import { InspectionRecord } from '../../types/api';
 import {
@@ -111,11 +109,19 @@ export const InspectionResultPanel: React.FC<InspectionResultPanelProps> = ({
             const [x, y, w, h] = item.bbox.map((v: number) => Math.round(v));
             bbox = { x, y, w, h, x_min: x, y_min: y, x_max: x + w, y_max: y + h };
           } else if (typeof item.bbox.x === 'number') {
+            const bx = Math.round(item.bbox.x);
+            const by = Math.round(item.bbox.y);
+            const bw = Math.round(item.bbox.width || item.bbox.w || 0);
+            const bh = Math.round(item.bbox.height || item.bbox.h || 0);
             bbox = {
-              x: Math.round(item.bbox.x),
-              y: Math.round(item.bbox.y),
-              w: Math.round(item.bbox.width || item.bbox.w || 0),
-              h: Math.round(item.bbox.height || item.bbox.h || 0),
+              x: bx,
+              y: by,
+              w: bw,
+              h: bh,
+              x_min: bx,
+              y_min: by,
+              x_max: bx + bw,
+              y_max: by + bh,
             };
           }
         }
@@ -372,9 +378,7 @@ export const InspectionResultPanel: React.FC<InspectionResultPanelProps> = ({
                           </span>
                           <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
                             {typeof v === 'number'
-                              ? Number.isInteger(v)
-                                ? v
-                                : v.toFixed(2)
+                              ? (Number.isInteger(v) ? v : v.toFixed(2))
                               : String(v)}
                           </span>
                         </div>

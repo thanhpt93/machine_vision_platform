@@ -21,11 +21,11 @@ describe('Phase 3: Production Edition Packaging & Capability Restrictions', () =
 
     window.electronAPI = {
       getAppInfo: vi.fn().mockResolvedValue({
-        appName: 'NOVA Machine Vision Platform — Production Edition',
+        appName: 'INVI Machine Vision Platform — Production Edition',
         version: '0.1.0',
         deploymentMode: 'production',
-        editionName: 'NOVA Machine Vision Platform — Production Edition',
-        appId: 'com.nova.machinevision.production',
+        editionName: 'INVI Machine Vision Platform — Production Edition',
+        appId: 'com.invi.machinevision.production',
         electronVersion: '35.0.0',
         chromeVersion: '134.0.0',
         nodeVersion: '22.0.0',
@@ -120,13 +120,13 @@ describe('Phase 3: Production Edition Packaging & Capability Restrictions', () =
     expect(devMeta.deploymentMode).toBe('developer');
     expect(devMeta.isDeveloperEdition).toBe(true);
     expect(devMeta.isProductionEdition).toBe(false);
-    expect(devMeta.appId).toBe('com.nova.machinevision.developer');
+    expect(devMeta.appId).toBe('com.invi.machinevision.developer');
     expect(devMeta.editionName).toContain('Developer Edition');
 
     expect(prodMeta.deploymentMode).toBe('production');
     expect(prodMeta.isProductionEdition).toBe(true);
     expect(prodMeta.isDeveloperEdition).toBe(false);
-    expect(prodMeta.appId).toBe('com.nova.machinevision.production');
+    expect(prodMeta.appId).toBe('com.invi.machinevision.production');
     expect(prodMeta.editionName).toContain('Production Edition');
 
     expect(devMeta.appId).not.toBe(prodMeta.appId);

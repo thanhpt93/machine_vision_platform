@@ -120,8 +120,9 @@ export class RuntimeProcessManager {
   public resolvePythonExecutable(): string | null {
     const candidates: string[] = [];
 
-    if (process.env.NOVA_PYTHON_PATH && process.env.NOVA_PYTHON_PATH.trim()) {
-      candidates.push(process.env.NOVA_PYTHON_PATH.trim());
+    const customPyPath = process.env.INVI_PYTHON_PATH || process.env.NOVA_PYTHON_PATH;
+    if (customPyPath && customPyPath.trim()) {
+      candidates.push(customPyPath.trim());
     }
 
     if (app.isPackaged) {
@@ -352,6 +353,7 @@ export class RuntimeProcessManager {
         PYTHONUNBUFFERED: '1',
         PYTHONPATH: runtimeRoot,
         MVP_RUNTIME_DATA_DIR: writableDataDir,
+        INVI_DEPLOYMENT_MODE: this.deploymentMode,
         NOVA_DEPLOYMENT_MODE: this.deploymentMode,
       };
 

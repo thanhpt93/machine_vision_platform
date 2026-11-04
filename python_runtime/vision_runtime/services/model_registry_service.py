@@ -322,7 +322,7 @@ class ModelRegistryService:
                 input_size=val_data["preprocessing"].get("input_size", [224, 224]),
                 num_classes=metadata.get("num_classes", len(val_data["classes"])),
                 classes=[ModelClassInfo(**c) for c in val_data["classes"]],
-                source="NOVA AI Trainer",
+                source="INVI AI Trainer",
                 status="valid",
                 import_date=now_iso,
                 file_size_bytes=val_data["file_size_bytes"],

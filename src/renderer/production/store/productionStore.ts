@@ -73,7 +73,7 @@ export interface ProductionStoreState {
   updatePreferences: (partial: Partial<ProductionPreferences>) => void;
 }
 
-const PREFS_STORAGE_KEY = 'nova_production_preferences';
+const PREFS_STORAGE_KEY = 'invi_production_preferences';
 
 function loadInitialPreferences(): ProductionPreferences {
   const defaults: ProductionPreferences = {

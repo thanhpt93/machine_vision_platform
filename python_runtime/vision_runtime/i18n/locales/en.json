@@ -1,0 +1,150 @@
+{
+  "app": {
+    "title": "Industrial Machine Vision Platform",
+    "short_title": "INVI Vision",
+    "workstation_title": "INVI Machine Vision",
+    "workstation_subtitle": "Production Workstation",
+    "developer_mode": "Developer Mode",
+    "production_mode": "Production Mode",
+    "tabs": {
+      "editor": "Pipeline Editor",
+      "diagnostics": "Diagnostics & Runtime",
+      "models": "AI Models",
+      "production": "Production Workstation"
+    },
+    "theme": {
+      "light": "Light Mode",
+      "dark": "Dark Mode",
+      "toggle_to_light": "Switch to Light Mode",
+      "toggle_to_dark": "Switch to Dark Mode"
+    },
+    "language": {
+      "label": "Language",
+      "select": "Select language",
+      "vi": "Tiếng Việt",
+      "en": "English",
+      "switch_success": "Successfully switched language to {name}"
+    }
+  },
+  "nav": {
+    "operator_navigation": "Operator Navigation",
+    "dashboard": "Dashboard",
+    "inspection": "Inspection",
+    "history": "Inspection History",
+    "pipelines": "Pipeline Management",
+    "system_status": "System Status",
+    "settings": "Settings",
+    "switch_to_developer": "Switch to Developer Mode"
+  },
+  "status": {
+    "runtime": "Vision Runtime",
+    "online": "ONLINE",
+    "offline": "OFFLINE",
+    "active_pipeline": "Active: {name} v{version}",
+    "no_pipeline_selected": "No Pipeline Selected",
+    "released_count": "{count} Released Pipeline(s)",
+    "executing_inspection": "EXECUTING INSPECTION",
+    "mode_production_readonly": "Mode: PRODUCTION (READ-ONLY)"
+  },
+  "inspection": {
+    "title": "Vision Inspection Workstation",
+    "subtitle": "Automated visual inspection and metrology execution for factory lines",
+    "select_image": "Select Input Image...",
+    "inspect_now": "Inspect Now",
+    "running": "Running Inspection...",
+    "cancel": "Cancel Inspection",
+    "no_pipeline_banner": "No released pipeline snapshot available. Release a pipeline snapshot from Developer Mode to start.",
+    "outcome": {
+      "label": "Inspection Outcome",
+      "ok": "PASS (OK)",
+      "ng": "FAIL (NG)",
+      "unknown": "UNKNOWN",
+      "failed": "EXECUTION FAILED"
+    },
+    "cycle_time": "Cycle Time",
+    "timestamp": "Inspection Time",
+    "measurements": "Measurements",
+    "defects": "Detected Defects",
+    "node_previews": "Node Previews"
+  },
+  "dashboard": {
+    "title": "Production Monitoring Dashboard",
+    "subtitle": "Real-time inspection throughput, yield rates, and operational telemetry",
+    "total_inspections": "Total Inspections",
+    "ok_rate": "Yield Rate (OK)",
+    "ng_rate": "Defect Rate (NG)",
+    "avg_cycle_time": "Avg Cycle Time",
+    "recent_activity": "Recent Inspection Activity",
+    "no_data": "No inspection activity recorded yet"
+  },
+  "history": {
+    "title": "Industrial Inspection History",
+    "subtitle": "Search, filter, inspect, and export production inspection logs",
+    "search_placeholder": "Search by inspection ID, pipeline name, outcome...",
+    "filter_all": "All Outcomes",
+    "filter_ok": "OK Only",
+    "filter_ng": "NG Only",
+    "export_csv": "Export to CSV",
+    "table": {
+      "id": "Inspection ID",
+      "timestamp": "Timestamp",
+      "pipeline": "Pipeline",
+      "version": "Version",
+      "outcome": "Outcome",
+      "cycle_time": "Cycle Time",
+      "details": "Details"
+    }
+  },
+  "settings": {
+    "title": "Workstation Settings & Preferences",
+    "subtitle": "Manage language preferences, workstation theme, software license, and runtime status",
+    "language_section": {
+      "title": "Language & Regional Preferences",
+      "description": "Switch the entire workstation user interface and system messages.",
+      "current_language": "Current Language",
+      "select_label": "Display language:"
+    },
+    "theme_section": {
+      "title": "Workstation Theme",
+      "description": "Toggle between Light and Dark mode optimized for factory shop floors.",
+      "switch_button": "Toggle Display Theme"
+    },
+    "version_section": {
+      "title": "Application & Runtime Version Information",
+      "app_version": "Desktop Application",
+      "runtime_version": "Python Vision Runtime",
+      "environment": "Execution Environment"
+    }
+  },
+  "license": {
+    "title": "INVI License Activation",
+    "badge_valid": "VALID LICENSE",
+    "badge_invalid": "NOT ACTIVATED",
+    "badge_expired": "LICENSE EXPIRED",
+    "import_button": "Import & Activate License...",
+    "details_button": "View License Details",
+    "instructions": "Import a digitally signed license artifact issued by INVI License Management (.invilic.json, .lic, .json).",
+    "select_file": "Select Signed License Artifact...",
+    "active_installed": "Active License Already Installed",
+    "confirm_replace": "Confirm & Select Replacement License",
+    "details": {
+      "title": "Software License Details",
+      "product": "Product",
+      "edition": "Edition",
+      "customer": "Customer",
+      "license_number": "License Number",
+      "type": "License Type",
+      "valid_from": "Valid From",
+      "expires_at": "Expires At",
+      "features": "Enabled Features",
+      "key_id": "Signing Key ID"
+    }
+  },
+  "models": {
+    "title": "AI Model Registry",
+    "subtitle": "Import, validate, and manage trained Image Classification and Object Detection ONNX bundles",
+    "badge_integration": "INVI AI Trainer Integration",
+    "import_button": "Import AI Model",
+    "no_models": "No trained models imported yet. Click \"Import AI Model\" to ingest an exported package from INVI AI Trainer."
+  }
+}

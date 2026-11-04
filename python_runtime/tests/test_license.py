@@ -116,8 +116,8 @@ def test_02_valid_developer_license_import_succeeds(client: TestClient, monkeypa
     assert det_resp.status_code == 200
     det = det_resp.json()
     assert det["has_license"] is True
-    assert det["product_id"] == "NOVA-MVP"
-    assert det["key_id"] == "nova-key-2026-01"
+    assert det["product_id"] in ("INVI-MVP", "NOVA-MVP")
+    assert det["key_id"] in ("invi-key-2026-01", "nova-key-2026-01")
     assert det["key_fingerprint"] is not None
     assert det["limits"]["max_devices"] == 2
 
@@ -160,7 +160,7 @@ def test_04_valid_license_persists_and_reverifies(clean_license_env: Path, monke
         license_number="NVL-PERSIST-101",
     )
     # Write to persistence directory
-    active_file = clean_license_env / "active_license.novalic.json"
+    active_file = clean_license_env / "active_license.invilic.json"
     active_file.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
 
     # Create a fresh service instance simulating application restart
@@ -246,7 +246,7 @@ def test_08_wrong_product_id_rejected(client: TestClient, monkeypatch: pytest.Mo
     assert resp.status_code == 400
     detail = resp.json()["detail"]
     assert detail["status"] == "INVALID_PRODUCT"
-    assert "does not match NOVA Machine Vision Platform" in detail["message"]
+    assert "does not match INVI Machine Vision Platform" in detail["message"]
 
 
 # ------------------------------------------------------------------------------

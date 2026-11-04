@@ -163,7 +163,7 @@ export const AiModelRegistry: React.FC = () => {
               <h1 className="text-base font-bold text-slate-900 dark:text-white uppercase tracking-tight flex items-center space-x-2">
                 <span>AI Model Registry</span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                  NOVA AI Trainer Integration
+                  INVI AI Trainer Integration
                 </span>
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -298,7 +298,7 @@ export const AiModelRegistry: React.FC = () => {
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 {searchQuery || taskFilter !== 'ALL'
                   ? 'No models match the selected search or filter criteria.'
-                  : 'No trained models imported yet. Click "Import Model" to ingest an exported model bundle from NOVA AI Trainer.'}
+                  : 'No trained models imported yet. Click "Import Model" to ingest an exported model bundle from INVI AI Trainer.'}
               </p>
             </div>
             {!searchQuery && taskFilter === 'ALL' && (
@@ -449,7 +449,7 @@ export const AiModelRegistry: React.FC = () => {
                   <Brain className="w-4 h-4" />
                 </div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">
-                  Import Model from NOVA AI Trainer
+                  Import Model from INVI AI Trainer
                 </h3>
               </div>
               <button

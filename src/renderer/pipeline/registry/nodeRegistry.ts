@@ -2643,7 +2643,7 @@ nodeRegistry.register({
   version: '1.0.0',
   displayName: 'AI Image Classification',
   category: 'ai_inference',
-  description: 'Classify visual inspection frames using deep learning models trained in NOVA AI Trainer.',
+  description: 'Classify visual inspection frames using deep learning models trained in INVI AI Trainer.',
   icon: 'brain',
   tags: ['ai', 'classification', 'onnx', 'deep learning', 'defect'],
   inputs: [
@@ -2674,7 +2674,7 @@ nodeRegistry.register({
   version: '1.0.0',
   displayName: 'AI Object Detection',
   category: 'ai_inference',
-  description: 'Detect industrial defects, parts, and objects using deep learning models exported from NOVA AI Trainer.',
+  description: 'Detect industrial defects, parts, and objects using deep learning models exported from INVI AI Trainer.',
   icon: 'brain',
   tags: ['ai', 'deep learning', 'onnx', 'faster-rcnn', 'detection', 'bounding-box'],
   inputs: [
