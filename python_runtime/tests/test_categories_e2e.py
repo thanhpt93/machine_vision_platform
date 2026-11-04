@@ -152,6 +152,9 @@ def test_category2_preparation(sample_synthetic_bgr, sample_synthetic_gray):
     # Flip & Rotate
     out_flip, _ = flip_rotate_handler({"image_in": sample_synthetic_bgr}, {"flip_mode": "horizontal", "rotate_angle": 90})
     assert out_flip["image_out"].shape == sample_synthetic_bgr.shape
+    out_rot180, meta180 = flip_rotate_handler({"image_in": sample_synthetic_bgr}, {"rotate_angle": 180})
+    assert out_rot180["image_out"].shape == sample_synthetic_bgr.shape
+    assert meta180["rotate_angle"] == 180
 
     # Padding Border
     out_pad, _ = padding_border_handler({"image_in": sample_synthetic_bgr}, {"top": 10, "bottom": 10, "left": 10, "right": 10})

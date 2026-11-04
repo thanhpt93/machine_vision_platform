@@ -426,8 +426,20 @@ def flip_rotate_handler(
     if img is None or not isinstance(img, np.ndarray):
         raise ValueError("Flip & Rotate node requires valid 'image_in' input frame.")
 
-    flip_mode = str(config.get("flip", "NONE")).upper()
-    angle = float(config.get("rotationAngle", 0.0))
+    # Support all flip key variations: flip_mode (from UI), flip, flipMode
+    raw_flip = config.get("flip_mode") or config.get("flip") or config.get("flipMode") or "NONE"
+    flip_mode = str(raw_flip).upper()
+
+    # Support all rotation angle variations: rotate_angle (from UI), rotationAngle, rotation_angle, angle
+    raw_angle = (
+        config.get("rotate_angle")
+        if config.get("rotate_angle") is not None
+        else config.get("rotationAngle", config.get("rotation_angle", config.get("angle", 0.0)))
+    )
+    try:
+        angle = float(raw_angle)
+    except (ValueError, TypeError):
+        angle = 0.0
 
     res = img.copy()
 
@@ -440,11 +452,12 @@ def flip_rotate_handler(
         res = cv2.flip(res, -1)
 
     # Rotate
-    if angle == 90 or angle == -270:
+    norm_angle = angle % 360
+    if norm_angle == 90:
         res = cv2.rotate(res, cv2.ROTATE_90_CLOCKWISE)
-    elif angle == 180 or angle == -180:
+    elif norm_angle == 180:
         res = cv2.rotate(res, cv2.ROTATE_180)
-    elif angle == 270 or angle == -90:
+    elif norm_angle == 270:
         res = cv2.rotate(res, cv2.ROTATE_90_COUNTERCLOCKWISE)
     elif abs(angle) > 0.01:
         h, w = res.shape[:2]
@@ -455,7 +468,9 @@ def flip_rotate_handler(
     h, w = res.shape[:2]
     metadata = {
         "flip": flip_mode,
+        "flip_mode": flip_mode.lower(),
         "rotationAngle": angle,
+        "rotate_angle": angle,
         "width": w,
         "height": h,
     }
